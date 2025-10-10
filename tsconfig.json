@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    /* Defaults */
     "esModuleInterop": true,
     "skipLibCheck": true,
     "target": "ESNext",
@@ -10,13 +11,14 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "verbatimModuleSyntax": true,
 
+    /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
 
+    /* Bundling */
     "moduleResolution": "Bundler",
     "outDir": "./dist"
   },

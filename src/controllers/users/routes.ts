@@ -1,5 +1,5 @@
+import { NotFoundError } from "@/utils/error";
 import { Hono } from "hono";
-import { NotFoundError } from "utils/error";
 
 const router = new Hono();
 
@@ -7,7 +7,7 @@ router
   .get("/users", (c) => {
     const user = false;
     if (!user)  {
-      throw new NotFoundError("Malformed JSON");
+      throw new NotFoundError("User Not Found");
     }
     else{
       return c.text("All Users")

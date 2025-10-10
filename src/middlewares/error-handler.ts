@@ -1,10 +1,10 @@
-import type { Context } from "hono";
-import { makeError } from "utils/error";
+import { makeError } from "@/utils/error";
+import { type Context } from "hono";
 
 export async function errorHandlerMiddleware(err: Error, c: Context) {
   const { error, statusCode } = makeError(err);
-  console.error(error.message, error);
+  console.error(statusCode, error);
   return c.json(error, {
-    statusCode: statusCode,
+    status: statusCode,
   } as any);
 }

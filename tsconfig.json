@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    /* Defaults */
     "esModuleInterop": true,
     "skipLibCheck": true,
     "target": "ESNext",
@@ -12,16 +11,15 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
 
-    /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
 
-    /* Bundling */
     "moduleResolution": "Bundler",
     "outDir": "./dist"
   },
+
   "include": ["**/*.ts", ".eslintrc.json"],
   "exclude": ["./node_modules", "./dist", "vitest.config.ts"]
 }

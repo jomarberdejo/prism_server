@@ -1,12 +1,12 @@
 import type { Context, Next } from "hono";
-import { getCookie } from "hono/cookie";
-import { COOKIE_NAMES } from "@/constants/cookies";
+import { getSignedCookie } from "hono/cookie";
+import { COOKIE_NAMES, JWT_SECRET } from "@/constants/cookies";
 import { getRefreshTokenByToken } from "@/data/refreshToken";
 import { verifyAccessToken } from "@/services/auth";
 import { UnauthorizedError } from "@/utils/error";
 
 export const authMiddleware = async (c: Context, next: Next) => {
-  const accessToken = getCookie(c, COOKIE_NAMES.accessToken);
+  const accessToken = await getSignedCookie(c, JWT_SECRET, COOKIE_NAMES.accessToken);
   console.log("access", accessToken);
   if (!accessToken) {
     throw new UnauthorizedError("Unauthorized");

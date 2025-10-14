@@ -1,5 +1,5 @@
 
-import { setSignedCookie, deleteCookie, getCookie } from "hono/cookie";
+import { setSignedCookie, deleteCookie, getCookie, getSignedCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import {
@@ -68,16 +68,20 @@ export const login = async (c: Context) => {
     {
       message: "Logged in successfully",
       user: { id: user.id, email: user.email, role: user.role },
+      accessToken,
+      refreshToken,
     },
     StatusCodes.OK
   );
+
 };
 
 export const refresh = async (c: Context) => {
 
-  const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
-  
-  
+  const refreshToken = await getSignedCookie(c, REFRESH_TOKEN_SECRET, COOKIE_NAMES.refreshToken);
+
+
+
 
   if (!refreshToken) {
     throw new BadRequestError("Refresh token missing");

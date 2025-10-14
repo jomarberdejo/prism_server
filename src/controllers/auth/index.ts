@@ -2,13 +2,20 @@
 import { setSignedCookie, deleteCookie, getCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
-import { COOKIE_CONFIG, COOKIE_NAMES, JWT_SECRET } from "@/constants/cookies";
-import { BadRequestError } from "@/utils/error";
+import {
+  ACCESS_TOKEN_COOKIE_CONFIG,
+  REFRESH_TOKEN_COOKIE_CONFIG,
+  COOKIE_NAMES,
+  JWT_SECRET,
+  REFRESH_TOKEN_SECRET,
+} from "@/constants/cookies";
+import { BadRequestError, UnauthorizedError } from "@/utils/error";
 import {
   registerUser,
   loginUser,
-  createUserSession,
-  destroySession,
+  createTokenPair,
+  rotateTokens,
+  destroyRefreshToken,
 } from "@/services/auth";
 
 export const register = async (c: Context) => {
@@ -35,14 +42,26 @@ export const login = async (c: Context) => {
 
   const user = await loginUser(email, password);
 
-  const token = await createUserSession(user.id, user.email, user.role);
+  const { accessToken, refreshToken } = await createTokenPair(
+    user.id,
+    user.email,
+    user.role
+  );
 
   await setSignedCookie(
     c,
     COOKIE_NAMES.accessToken,
-    token,
+    accessToken,
     JWT_SECRET,
-    COOKIE_CONFIG
+    ACCESS_TOKEN_COOKIE_CONFIG
+  );
+
+  await setSignedCookie(
+    c,
+    COOKIE_NAMES.refreshToken,
+    refreshToken,
+    REFRESH_TOKEN_SECRET,
+    REFRESH_TOKEN_COOKIE_CONFIG
   );
 
   return c.json(
@@ -54,20 +73,55 @@ export const login = async (c: Context) => {
   );
 };
 
-export const logout = async (c: Context) => {
-  const token = getCookie(c, COOKIE_NAMES.accessToken);
+export const refresh = async (c: Context) => {
 
-  if (token) {
-    await destroySession(token);
+  const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
+  
+  
+
+  if (!refreshToken) {
+    throw new BadRequestError("Refresh token missing");
   }
 
-  deleteCookie(c, COOKIE_NAMES.accessToken, COOKIE_CONFIG);
+  const tokens = await rotateTokens(refreshToken);
+
+  if (!tokens) {
+    throw new UnauthorizedError("Invalid or expired refresh token");
+  }
+
+  await setSignedCookie(
+    c,
+    COOKIE_NAMES.accessToken,
+    tokens.accessToken,
+    JWT_SECRET,
+    ACCESS_TOKEN_COOKIE_CONFIG
+  );
+
+  await setSignedCookie(
+    c,
+    COOKIE_NAMES.refreshToken,
+    tokens.refreshToken,
+    REFRESH_TOKEN_SECRET,
+    REFRESH_TOKEN_COOKIE_CONFIG
+  );
+
+  return c.json({ message: "Tokens refreshed successfully" }, StatusCodes.OK);
+};
+
+export const logout = async (c: Context) => {
+  const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
+
+  if (refreshToken) {
+    await destroyRefreshToken(refreshToken);
+  }
+
+  deleteCookie(c, COOKIE_NAMES.accessToken, ACCESS_TOKEN_COOKIE_CONFIG);
+  deleteCookie(c, COOKIE_NAMES.refreshToken, REFRESH_TOKEN_COOKIE_CONFIG);
 
   return c.json({ message: "Logged out successfully" }, StatusCodes.OK);
 };
 
 export const getCurrentUser = async (c: Context) => {
-  const user = (c as any).user;
+  const user = c.get("user") as { userId: string; email: string; role: string };
   return c.json(user, StatusCodes.OK);
 };
-

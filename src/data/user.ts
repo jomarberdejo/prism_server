@@ -9,47 +9,53 @@ const userSelect = {
   createdAt: true,
 } as const;
 
-export const getUserByEmail = async (email: string) => {
-  return prisma.user.findUnique({ where: { email } });
-};
+export const userRepository = {
+  async findByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+    });
+  },
 
-export const createUser = async (
-  email: string,
-  hashedPassword: string,
-  name: string
-) => {
-  return prisma.user.create({
-    data: {
-      email,
-      password: hashedPassword,
-      name,
-    },
-  });
-};
+  async findById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: userSelect,
+    });
+  },
 
-export const getAllUsers = async () => {
-  return prisma.user.findMany({
-    select: userSelect,
-  });
-};
+  async create(email: string, hashedPassword: string, name: string) {
+    return prisma.user.create({
+      data: { email, password: hashedPassword, name },
+      select: userSelect,
+    });
+  },
 
-export const getUserById = async (id: string) => {
-  return prisma.user.findUnique({
-    where: { id },
-    select: userSelect,
-  });
-};
+  async findAll() {
+    return prisma.user.findMany({
+      select: userSelect,
+      orderBy: { createdAt: "desc" },
+    });
+  },
 
-export const updateUserRole = async (id: string, role: ROLE) => {
-  return prisma.user.update({
-    where: { id },
-    data: { role },
-    select: userSelect,
-  });
-};
+  async findByRole(role: ROLE) {
+    return prisma.user.findMany({
+      where: { role },
+      select: userSelect,
+    });
+  },
 
-export const deleteUserById = async (id: string) => {
-  return prisma.user.delete({
-    where: { id },
-  });
+  async updateRole(id: string, role: ROLE) {
+    return prisma.user.update({
+      where: { id },
+      data: { role },
+      select: userSelect,
+    });
+  },
+
+
+  async delete(id: string) {
+    return prisma.user.delete({
+      where: { id },
+    });
+  },
 };

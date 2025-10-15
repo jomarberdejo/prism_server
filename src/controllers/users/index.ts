@@ -1,40 +1,72 @@
+import { ROLE } from "@/generated/prisma";
+import { userService } from "@/services/user";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
-import { getAllUsers as getAllUsersData, deleteUserById } from "@/data/user";
-import { fetchUserById, updateUserRoleService } from "@/services/user";
-import { BadRequestError } from "@/utils/error";
 
-export const getAllUsers = async (c: Context) => {
-  const users = await getAllUsersData();
-  return c.json(users, StatusCodes.OK);
-};
+export const userHandler = {
+  async getAll(c: Context) {
+    const users = await userService.getAllUsers();
+    return c.json(
+      {
+        success: true,
+        data: { users },
+      },
+      StatusCodes.OK
+    );
+  },
 
-export const getUserById = async (c: Context) => {
-  const { id } = c.req.param();
-  if (!id) {
-    throw new BadRequestError("User ID is required");
-  }
-  const user = await fetchUserById(id);
-  return c.json(user, StatusCodes.OK);
-};
+  async getById(c: Context) {
+    const id = c.req.param("id");
+    const user = await userService.getUserById(id);
 
-export const updateUserRole = async (c: Context) => {
-  const { id } = c.req.param();
-  const { role } = await c.req.json();
+    return c.json(
+      {
+        success: true,
+        data: { user },
+      },
+      StatusCodes.OK
+    );
+  },
 
-  if (!id) {
-    throw new BadRequestError("User ID is required");
-  }
+  async getByRole(c: Context) {
+    const role = c.req.param("role") as ROLE;
+    const users = await userService.getUsersByRole(role);
 
-  const user = await updateUserRoleService(id, role);
-  return c.json(user, StatusCodes.OK);
-};
+    return c.json(
+      {
+        success: true,
+        data: { users },
+      },
+      StatusCodes.OK
+    );
+  },
 
-export const deleteUser = async (c: Context) => {
-  const { id } = c.req.param();
-  if (!id) {
-    throw new BadRequestError("User ID is required");
-  }
-  await deleteUserById(id);
-  return c.json({ message: "User deleted successfully" }, StatusCodes.OK);
+  async updateRole(c: Context) {
+    const id = c.req.param("id");
+    const { role } = await c.req.json();
+
+    const user = await userService.updateUserRole(id, role);
+
+    return c.json(
+      {
+        success: true,
+        message: "Role updated successfully",
+        data: { user },
+      },
+      StatusCodes.OK
+    );
+  },
+
+  async delete(c: Context) {
+    const id = c.req.param("id");
+    await userService.deleteUser(id);
+
+    return c.json(
+      {
+        success: true,
+        message: "User deleted successfully",
+      },
+      StatusCodes.OK
+    );
+  },
 };

@@ -1,131 +1,94 @@
-
-import { setSignedCookie, deleteCookie, getCookie, getSignedCookie } from "hono/cookie";
+import {
+  deleteCookie,
+  getCookie,
+  setCookie,
+} from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
-import {
-  ACCESS_TOKEN_COOKIE_CONFIG,
-  REFRESH_TOKEN_COOKIE_CONFIG,
-  COOKIE_NAMES,
-  JWT_SECRET,
-  REFRESH_TOKEN_SECRET,
-} from "@/constants/cookies";
-import { BadRequestError, UnauthorizedError } from "@/utils/error";
-import {
-  registerUser,
-  loginUser,
-  createTokenPair,
-  rotateTokens,
-  destroyRefreshToken,
-} from "@/services/auth";
+import { BadRequestError } from "@/utils/error";
+import { authService } from "@/services/auth";
+import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
 
-export const register = async (c: Context) => {
-  const { email, password, name } = await c.req.json();
+export const authHandler = {
+  async register(c: Context) {
+    const { email, password, name } = await c.req.json();
 
-  if (!email || !password || !name) {
-    throw new BadRequestError("Missing required fields");
-  }
+    if (!email || !password || !name) {
+      throw new BadRequestError("Missing required fields");
+    }
 
-  await registerUser(email, password, name);
+    const user = await authService.register(email, password, name);
 
-  return c.json(
-    { message: "User created successfully" },
-    StatusCodes.CREATED
-  );
-};
+    return c.json(
+      {
+        success: true,
+        message: "User registered successfully",
+        data: { user },
+      },
+      StatusCodes.CREATED
+    );
+  },
 
-export const login = async (c: Context) => {
-  const { email, password } = await c.req.json();
+  async login(c: Context) {
+    const { email, password } = await c.req.json();
 
-  if (!email || !password) {
-    throw new BadRequestError("Missing email or password");
-  }
+    if (!email || !password) {
+      throw new BadRequestError("Email and password required");
+    }
 
-  const user = await loginUser(email, password);
+    const user = await authService.login(email, password);
+    const token = await authService.createSession(
+      user.id,
+      user.email,
+      user.role
+    );
 
-  const { accessToken, refreshToken } = await createTokenPair(
-    user.id,
-    user.email,
-    user.role
-  );
+    setCookie(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
 
-  await setSignedCookie(
-    c,
-    COOKIE_NAMES.accessToken,
-    accessToken,
-    JWT_SECRET,
-    ACCESS_TOKEN_COOKIE_CONFIG
-  );
+    return c.json(
+      {
+        success: true,
+        message: "Logged in successfully",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          },
+          token,
+        },
+      },
+      StatusCodes.OK
+    );
+  },
 
-  await setSignedCookie(
-    c,
-    COOKIE_NAMES.refreshToken,
-    refreshToken,
-    REFRESH_TOKEN_SECRET,
-    REFRESH_TOKEN_COOKIE_CONFIG
-  );
+  async logout(c: Context) {
+    const token = getCookie(c, COOKIE_NAMES.accessToken);
 
-  return c.json(
-    {
-      message: "Logged in successfully",
-      user: { id: user.id, email: user.email, role: user.role },
-      accessToken,
-      refreshToken,
-    },
-    StatusCodes.OK
-  );
+    if (token) {
+      await authService.destroySession(token);
+    }
 
-};
+    deleteCookie(c, COOKIE_NAMES.accessToken, COOKIE_CONFIG);
 
-export const refresh = async (c: Context) => {
+    return c.json(
+      {
+        success: true,
+        message: "Logged out successfully",
+      },
+      StatusCodes.OK
+    );
+  },
 
-  const refreshToken = await getSignedCookie(c, REFRESH_TOKEN_SECRET, COOKIE_NAMES.refreshToken);
-
-
-
-
-  if (!refreshToken) {
-    throw new BadRequestError("Refresh token missing");
-  }
-
-  const tokens = await rotateTokens(refreshToken);
-
-  if (!tokens) {
-    throw new UnauthorizedError("Invalid or expired refresh token");
-  }
-
-  await setSignedCookie(
-    c,
-    COOKIE_NAMES.accessToken,
-    tokens.accessToken,
-    JWT_SECRET,
-    ACCESS_TOKEN_COOKIE_CONFIG
-  );
-
-  await setSignedCookie(
-    c,
-    COOKIE_NAMES.refreshToken,
-    tokens.refreshToken,
-    REFRESH_TOKEN_SECRET,
-    REFRESH_TOKEN_COOKIE_CONFIG
-  );
-
-  return c.json({ message: "Tokens refreshed successfully" }, StatusCodes.OK);
-};
-
-export const logout = async (c: Context) => {
-  const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
-
-  if (refreshToken) {
-    await destroyRefreshToken(refreshToken);
-  }
-
-  deleteCookie(c, COOKIE_NAMES.accessToken, ACCESS_TOKEN_COOKIE_CONFIG);
-  deleteCookie(c, COOKIE_NAMES.refreshToken, REFRESH_TOKEN_COOKIE_CONFIG);
-
-  return c.json({ message: "Logged out successfully" }, StatusCodes.OK);
-};
-
-export const getCurrentUser = async (c: Context) => {
-  const user = c.get("user") as { userId: string; email: string; role: string };
-  return c.json(user, StatusCodes.OK);
+  async getCurrentUser(c: Context) {
+    const user = c.get("user");
+    return c.json(
+      {
+        success: true,
+        data: { user },
+      },
+      StatusCodes.OK
+    );
+  },
 };

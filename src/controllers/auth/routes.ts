@@ -1,11 +1,9 @@
 import { Hono } from "hono";
-import { login, logout, refresh, register } from "@/controllers/auth";
-
+import {authHandler} from '@/controllers/auth'
 const router = new Hono();
 
-router.post("/auth/register", register);
-router.post("/auth/login", login);
-router.post("/auth/logout", logout);
-router.post("/auth/refresh", refresh);
+router.post("/auth/register", authHandler.register);
+router.post("/auth/login", authHandler.login);
+router.post("/auth/logout", authHandler.logout);
 
 export default router;

@@ -22,15 +22,14 @@ enum ROLE {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  password     String
-  name         String
-  role         ROLE           @default(VIEWER)
-  sessions     Session[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  refreshToken RefreshToken[]
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  role      ROLE      @default(VIEWER)
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([email])
 }
@@ -40,17 +39,6 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique @db.VarChar(240)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-}
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique @db.VarChar(220)
   expiresAt DateTime
   createdAt DateTime @default(now())
 

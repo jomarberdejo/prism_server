@@ -1,10 +1,8 @@
 import { Hono } from "hono";
-import { getAllUsers } from ".";
-import { requireRole } from "@/middlewares/rbac";
-import { authMiddleware } from "@/middlewares/auth";
-
+import { authMiddleware, requireRole } from "@/middlewares/auth";
+import {userHandler} from '@/controllers/users'
 const router = new Hono();
 
-router.get("/users", authMiddleware, getAllUsers);
+router.get("/users", authMiddleware, requireRole(["ADMIN"]), userHandler.getAll);
 
 export default router;

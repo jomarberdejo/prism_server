@@ -1,35 +1,60 @@
 import type { Context, Next } from "hono";
-import { getSignedCookie } from "hono/cookie";
-import { COOKIE_NAMES, JWT_SECRET } from "@/constants/cookies";
-import { getRefreshTokenByToken } from "@/data/refreshToken";
-import { verifyAccessToken } from "@/services/auth";
-import { UnauthorizedError } from "@/utils/error";
+import { getCookie } from "hono/cookie";
+
+import { UnauthorizedError, ForbiddenError } from "@/utils/error";
+import type { UserPayload } from "@/types/auth";
+import { sessionRepository } from "@/data/session";
+import { authService } from "@/services/auth";
+import { COOKIE_NAMES } from "@/constants/cookies";
+
+declare global {
+  namespace HonoRequest {
+    interface HonoContextVariables {
+      user: UserPayload;
+    }
+  }
+}
 
 export const authMiddleware = async (c: Context, next: Next) => {
-  const accessToken = await getSignedCookie(c, JWT_SECRET, COOKIE_NAMES.accessToken);
-  console.log("access", accessToken);
-  if (!accessToken) {
-    throw new UnauthorizedError("Unauthorized");
+  const token = getCookie(c, COOKIE_NAMES.accessToken);
+
+
+
+  if (!token) {
+    throw new UnauthorizedError("No token provided");
   }
 
-  const payload = await verifyAccessToken(accessToken);
+  const session = await sessionRepository.findByToken(token);
+  console.log(session)
+  if (!session || new Date() > session.expiresAt) {
+    throw new UnauthorizedError("Session expired or invalid");
+  }
 
+  const payload = await authService.verifyToken(token);
   if (!payload) {
     throw new UnauthorizedError("Invalid token");
   }
 
-  const { userId, email, role } = payload as {
-    userId: string;
-    email: string;
-    role: string;
-  };
-
-  const user = {
-    id: userId,
-    email: email,
-    role: role,
+  const user: UserPayload = {
+    id: payload.userId,
+    email: payload.email,
+    role: payload.role,
   };
 
   c.set("user", user);
   await next();
+};
+
+export const requireRole = (allowedRoles: string[]) => {
+  return async (c: Context, next: Next) => {
+    const user = c.get("user") as UserPayload | undefined;
+
+    console.log(user)
+
+    if (!user || !allowedRoles.includes(user.role)) {
+      throw new ForbiddenError("Insufficient permissions");
+    }
+
+    await next();
+  };
 };

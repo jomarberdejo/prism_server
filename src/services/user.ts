@@ -1,26 +1,42 @@
-
-import { getUserById as getUserByIdData, updateUserRole as updateUserRoleData } from "@/data/user";
+import { userRepository } from "@/data/user";
 import { ROLE } from "@/generated/prisma";
 import { NotFoundError, BadRequestError } from "@/utils/error";
 
-const VALID_ROLES = ["SUPER_ADMIN", "ADMIN", "VIEWER", "EDITOR"] as const;
+const VALID_ROLES = ["SUPER_ADMIN", "ADMIN", "EDITOR", "VIEWER"] as const;
 
-export const fetchUserById = async (id: string) => {
-  const user = await getUserByIdData(id);
+export const userService = {
+  async getUserById(id: string) {
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    return user;
+  },
 
-  if (!user) {
-    throw new NotFoundError("User not found");
-  }
+  async getAllUsers() {
+    return userRepository.findAll();
+  },
 
-  return user;
-};
+  async getUsersByRole(role: ROLE) {
+    if (!VALID_ROLES.includes(role as any)) {
+      throw new BadRequestError("Invalid role");
+    }
+    return userRepository.findByRole(role);
+  },
 
-export const updateUserRoleService = async (id: string, role: ROLE) => {
-  if (!VALID_ROLES.includes(role)) {
-    throw new BadRequestError("Invalid role");
-  }
+  async updateUserRole(userId: string, role: ROLE) {
+    if (!VALID_ROLES.includes(role as any)) {
+      throw new BadRequestError("Invalid role");
+    }
 
-  const user = await fetchUserById(id);
+    const user = await this.getUserById(userId);
+    return userRepository.updateRole(userId, role);
+  },
 
-  return updateUserRoleData(id, role);
+ 
+
+  async deleteUser(id: string) {
+    await this.getUserById(id);
+    return userRepository.delete(id);
+  },
 };

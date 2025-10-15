@@ -1,5 +1,9 @@
-
-import { setSignedCookie, deleteCookie, getCookie } from "hono/cookie";
+import {
+  setSignedCookie,
+  deleteCookie,
+  getCookie,
+  setCookie,
+} from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import {
@@ -27,10 +31,7 @@ export const register = async (c: Context) => {
 
   await registerUser(email, password, name);
 
-  return c.json(
-    { message: "User created successfully" },
-    StatusCodes.CREATED
-  );
+  return c.json({ message: "User created successfully" }, StatusCodes.CREATED);
 };
 
 export const login = async (c: Context) => {
@@ -48,19 +49,17 @@ export const login = async (c: Context) => {
     user.role
   );
 
-  await setSignedCookie(
+  setCookie(
     c,
     COOKIE_NAMES.accessToken,
     accessToken,
-    JWT_SECRET,
     ACCESS_TOKEN_COOKIE_CONFIG
   );
 
-  await setSignedCookie(
+  setCookie(
     c,
     COOKIE_NAMES.refreshToken,
     refreshToken,
-    REFRESH_TOKEN_SECRET,
     REFRESH_TOKEN_COOKIE_CONFIG
   );
 
@@ -74,10 +73,7 @@ export const login = async (c: Context) => {
 };
 
 export const refresh = async (c: Context) => {
-
   const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
-  
-  
 
   if (!refreshToken) {
     throw new BadRequestError("Refresh token missing");
@@ -89,21 +85,17 @@ export const refresh = async (c: Context) => {
     throw new UnauthorizedError("Invalid or expired refresh token");
   }
 
-  await setSignedCookie(
+  
+
+   setCookie(
     c,
     COOKIE_NAMES.accessToken,
     tokens.accessToken,
-    JWT_SECRET,
     ACCESS_TOKEN_COOKIE_CONFIG
   );
 
-  await setSignedCookie(
-    c,
-    COOKIE_NAMES.refreshToken,
-    tokens.refreshToken,
-    REFRESH_TOKEN_SECRET,
-    REFRESH_TOKEN_COOKIE_CONFIG
-  );
+
+  setCookie(c, COOKIE_NAMES.refreshToken, tokens.refreshToken, REFRESH_TOKEN_COOKIE_CONFIG);
 
   return c.json({ message: "Tokens refreshed successfully" }, StatusCodes.OK);
 };

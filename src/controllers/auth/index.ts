@@ -1,9 +1,5 @@
-import {
-  setSignedCookie,
-  deleteCookie,
-  getCookie,
-  setCookie,
-} from "hono/cookie";
+
+import { setSignedCookie, deleteCookie, getCookie, getSignedCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import {
@@ -31,7 +27,10 @@ export const register = async (c: Context) => {
 
   await registerUser(email, password, name);
 
-  return c.json({ message: "User created successfully" }, StatusCodes.CREATED);
+  return c.json(
+    { message: "User created successfully" },
+    StatusCodes.CREATED
+  );
 };
 
 export const login = async (c: Context) => {
@@ -49,17 +48,19 @@ export const login = async (c: Context) => {
     user.role
   );
 
-  setCookie(
+  await setSignedCookie(
     c,
     COOKIE_NAMES.accessToken,
     accessToken,
+    JWT_SECRET,
     ACCESS_TOKEN_COOKIE_CONFIG
   );
 
-  setCookie(
+  await setSignedCookie(
     c,
     COOKIE_NAMES.refreshToken,
     refreshToken,
+    REFRESH_TOKEN_SECRET,
     REFRESH_TOKEN_COOKIE_CONFIG
   );
 
@@ -67,13 +68,20 @@ export const login = async (c: Context) => {
     {
       message: "Logged in successfully",
       user: { id: user.id, email: user.email, role: user.role },
+      accessToken,
+      refreshToken,
     },
     StatusCodes.OK
   );
+
 };
 
 export const refresh = async (c: Context) => {
-  const refreshToken = getCookie(c, COOKIE_NAMES.refreshToken);
+
+  const refreshToken = await getSignedCookie(c, REFRESH_TOKEN_SECRET, COOKIE_NAMES.refreshToken);
+
+
+
 
   if (!refreshToken) {
     throw new BadRequestError("Refresh token missing");
@@ -85,17 +93,21 @@ export const refresh = async (c: Context) => {
     throw new UnauthorizedError("Invalid or expired refresh token");
   }
 
-  
-
-   setCookie(
+  await setSignedCookie(
     c,
     COOKIE_NAMES.accessToken,
     tokens.accessToken,
+    JWT_SECRET,
     ACCESS_TOKEN_COOKIE_CONFIG
   );
 
-
-  setCookie(c, COOKIE_NAMES.refreshToken, tokens.refreshToken, REFRESH_TOKEN_COOKIE_CONFIG);
+  await setSignedCookie(
+    c,
+    COOKIE_NAMES.refreshToken,
+    tokens.refreshToken,
+    REFRESH_TOKEN_SECRET,
+    REFRESH_TOKEN_COOKIE_CONFIG
+  );
 
   return c.json({ message: "Tokens refreshed successfully" }, StatusCodes.OK);
 };

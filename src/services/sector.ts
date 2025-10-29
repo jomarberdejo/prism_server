@@ -1,0 +1,79 @@
+
+import { implementingUnitRepository } from "@/data/implementingUnit";
+import { sectorRepository } from "@/data/sector";
+import {
+  NotFoundError,
+  BadRequestError,
+  ConflictError,
+} from "@/utils/error";
+
+export const sectorService = {
+  async getAllSectors() {
+    return sectorRepository.findAll();
+  },
+
+  async getSectorById(id: string) {
+    const sector = await sectorRepository.findById(id);
+    if (!sector) {
+      throw new NotFoundError("Sector not found");
+    }
+    return sector;
+  },
+
+  async createSector(name: string, description: string) {
+    if (!name || !description) {
+      throw new BadRequestError("Name and description are required");
+    }
+
+    const existingSector = await sectorRepository.findByName(name);
+    if (existingSector) {
+      throw new ConflictError("Sector with this name already exists");
+    }
+
+    return sectorRepository.create(name, description);
+  },
+
+  async updateSector(id: string, name: string, description: string) {
+    if (!name || !description) {
+      throw new BadRequestError("Name and description are required");
+    }
+
+    const sector = await sectorRepository.findById(id);
+    if (!sector) {
+      throw new NotFoundError("Sector not found");
+    }
+
+    // Check if name is already taken by another sector
+    const existingSector = await sectorRepository.findByName(name);
+    if (existingSector && existingSector.id !== id) {
+      throw new ConflictError("Sector with this name already exists");
+    }
+
+    return sectorRepository.update(id, name, description);
+  },
+
+  async deleteSector(id: string) {
+    const sector = await sectorRepository.findById(id);
+    if (!sector) {
+      throw new NotFoundError("Sector not found");
+    }
+
+    // Check if sector has implementing units
+    const implementingUnits = await implementingUnitRepository.findBySectorId(id);
+    if (implementingUnits.length > 0) {
+      throw new BadRequestError(
+        "Cannot delete sector with existing implementing units"
+      );
+    }
+
+    return sectorRepository.delete(id);
+  },
+
+  async getSectorStats(id: string) {
+    const sector = await sectorRepository.getSectorWithStats(id);
+    if (!sector) {
+      throw new NotFoundError("Sector not found");
+    }
+    return sector;
+  },
+};

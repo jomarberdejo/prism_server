@@ -37,7 +37,7 @@ export const authService = {
     return bcrypt.compare(password, hash);
   },
 
-  async register(email: string, password: string, name: string) {
+  async register(email: string, password: string, name: string, isDepartmentHead: boolean) {
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       throw new ConflictError("Email already in use");
@@ -48,10 +48,10 @@ export const authService = {
     }
 
     const hashedPassword = await this.hashPassword(password);
-    return userRepository.create(email, hashedPassword, name);
+    return userRepository.create(email, hashedPassword, name, isDepartmentHead);
   },
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, pushToken: string) {
     const user = await userRepository.findByEmail(email);
     if (!user) {
       throw new UnauthorizedError("Invalid credentials");
@@ -62,6 +62,8 @@ export const authService = {
     if (!isPasswordValid) {
       throw new UnauthorizedError("Invalid credentials");
     }
+
+    await userRepository.updatePushToken(email, pushToken)
 
     return user;
   },

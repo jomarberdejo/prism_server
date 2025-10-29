@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import {authHandler} from '@/controllers/auth'
+import { authHandler } from "@/controllers/auth";
 const router = new Hono();
 
 router.post("/auth/register", authHandler.register);

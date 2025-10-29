@@ -10,6 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
 
     "baseUrl": ".",
     "paths": {
@@ -19,7 +20,6 @@
     "moduleResolution": "Bundler",
     "outDir": "./dist"
   },
-
   "include": ["**/*.ts", ".eslintrc.json"],
   "exclude": ["./node_modules", "./dist", "vitest.config.ts"]
 }

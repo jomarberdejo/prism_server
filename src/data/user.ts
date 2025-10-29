@@ -1,12 +1,14 @@
-import { ROLE } from "@/generated/prisma";
+import { Prisma, ROLE } from "@/generated/prisma";
 import prisma from "@/lib/prisma";
 
-const userSelect = {
+const userSelect: Prisma.UserSelect = {
   id: true,
   email: true,
   name: true,
   role: true,
   createdAt: true,
+  isDepartmentHead: true,
+  pushToken: true,
 } as const;
 
 export const userRepository = {
@@ -23,17 +25,27 @@ export const userRepository = {
     });
   },
 
-  async create(email: string, hashedPassword: string, name: string) {
+  async create(email: string, hashedPassword: string, name: string, isDepartmentHead: boolean) {
     return prisma.user.create({
-      data: { email, password: hashedPassword, name },
+      data: { email, password: hashedPassword, name, isDepartmentHead },
       select: userSelect,
     });
   },
 
   async findAll() {
     return prisma.user.findMany({
-      select: userSelect,
       orderBy: { createdAt: "desc" },
+      select: {
+        ...userSelect,
+        departmentHead: true,
+        sessions: {
+          select: {
+            id: true,
+            createdAt: true,
+            token: true,
+          },
+        },
+      },
     });
   },
 
@@ -52,10 +64,48 @@ export const userRepository = {
     });
   },
 
+  async updatePushToken(email: string, pushToken: string) {
+    return prisma.user.update({
+      where: { email },
+      data: { pushToken },
+      select: userSelect,
+    });
+  },
 
   async delete(id: string) {
     return prisma.user.delete({
       where: { id },
+    });
+  },
+
+  async updateDepartmentHeadStatus(userId: string, isDepartmentHead: boolean) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { isDepartmentHead },
+    });
+  },
+
+  async getDepartmentHeads() {
+    return prisma.user.findMany({
+      where: { isDepartmentHead: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        departmentHead: {
+          select: {
+            id: true,
+            name: true,
+            sector: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
   },
 };

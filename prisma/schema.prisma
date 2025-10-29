@@ -22,14 +22,17 @@ enum ROLE {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  name      String
-  role      ROLE      @default(VIEWER)
-  sessions  Session[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id               String            @id @default(cuid())
+  email            String            @unique
+  password         String
+  name             String
+  role             ROLE              @default(VIEWER)
+  isDepartmentHead Boolean           @default(false)
+  sessions         Session[]
+  departmentHead   ImplementingUnit?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  pushToken        String?
 
   @@index([email])
 }
@@ -43,4 +46,41 @@ model Session {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model Sector {
+  id               String             @id @default(cuid())
+  name             String
+  description      String
+  PPA              PPA[]
+  ImplementingUnit ImplementingUnit[]
+}
+
+model ImplementingUnit {
+  id       String @id @default(cuid())
+  name     String
+  userId   String @unique
+  sectorId String
+  deptHead User   @relation(fields: [userId], references: [id])
+  sector   Sector @relation(fields: [sectorId], references: [id])
+  PPA      PPA[]
+}
+
+model PPA {
+  id                 String           @id @default(cuid())
+  task               String
+  description        String
+  address            String
+  location           String?
+  venue              String?
+  startDate          DateTime
+  dueDate            DateTime
+  startTime          DateTime
+  dueTime            DateTime
+  expectedOutput     String
+  sectorId           String
+  implementingUnitId String
+  sector             Sector           @relation(fields: [sectorId], references: [id])
+  implementingUnit   ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
+  lastNotifiedAt     DateTime?
 }

@@ -11,13 +11,13 @@ import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
 
 export const authHandler = {
   async register(c: Context) {
-    const { email, password, name } = await c.req.json();
+    const { email, password, name, isDepartmentHead } = await c.req.json();
 
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !isDepartmentHead) {
       throw new BadRequestError("Missing required fields");
     }
 
-    const user = await authService.register(email, password, name);
+    const user = await authService.register(email, password, name, isDepartmentHead);
 
     return c.json(
       {
@@ -30,13 +30,13 @@ export const authHandler = {
   },
 
   async login(c: Context) {
-    const { email, password } = await c.req.json();
+    const { email, password, pushToken } = await c.req.json();
 
     if (!email || !password) {
       throw new BadRequestError("Email and password required");
     }
 
-    const user = await authService.login(email, password);
+    const user = await authService.login(email, password, pushToken);
     const token = await authService.createSession(
       user.id,
       user.email,
@@ -55,6 +55,7 @@ export const authHandler = {
             email: user.email,
             name: user.name,
             role: user.role,
+            isDepartmentHead: user.isDepartmentHead,
           },
           token,
         },

@@ -46,7 +46,6 @@ export function makeError<TError extends Error>(error: TError) {
     message: error.message,
   };
 
-  /* Custom Errors */
   if (error.message.includes("Malformed JSON")) {
     return {
       statusCode: StatusCodes.BAD_REQUEST,

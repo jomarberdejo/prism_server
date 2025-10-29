@@ -1,4 +1,5 @@
 import { ROLE } from "@/generated/prisma";
+// import { notificationService } from "@/services/notificationService";
 import { userService } from "@/services/user";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
@@ -6,10 +7,15 @@ import { StatusCodes } from "http-status-codes";
 export const userHandler = {
   async getAll(c: Context) {
     const users = await userService.getAllUsers();
+
+   
+
+
     return c.json(
       {
         success: true,
         data: { users },
+        
       },
       StatusCodes.OK
     );
@@ -69,4 +75,7 @@ export const userHandler = {
       StatusCodes.OK
     );
   },
+  
 };
+
+

@@ -1,8 +1,8 @@
+import { VALID_ROLES } from "@/constants/roles";
 import { userRepository } from "@/data/user";
 import { ROLE } from "@/generated/prisma";
 import { NotFoundError, BadRequestError } from "@/utils/error";
 
-const VALID_ROLES = ["SUPER_ADMIN", "ADMIN", "EDITOR", "VIEWER"] as const;
 
 export const userService = {
   async getUserById(id: string) {
@@ -33,7 +33,6 @@ export const userService = {
     return userRepository.updateRole(userId, role);
   },
 
- 
 
   async deleteUser(id: string) {
     await this.getUserById(id);

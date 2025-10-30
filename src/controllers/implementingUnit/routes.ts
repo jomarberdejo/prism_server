@@ -6,27 +6,27 @@ const router = new Hono();
 router.post(
   "/implementing-units",
   authMiddleware,
-  implementingUnitHandler.create
+  implementingUnitHandler.create,
 );
 router.get(
   "/implementing-units",
   authMiddleware,
-  implementingUnitHandler.getAll
+  implementingUnitHandler.getAll,
 );
 router.delete(
   "/implementing-units/:id",
   authMiddleware,
-  implementingUnitHandler.delete
+  implementingUnitHandler.delete,
 );
 router.patch(
   "/implementing-units/:id",
   authMiddleware,
-  implementingUnitHandler.update
+  implementingUnitHandler.update,
 );
 router.get(
   "/implementing-units/sector/:sectorId",
   authMiddleware,
-  implementingUnitHandler.getBySectorId
+  implementingUnitHandler.getBySectorId,
 );
 
 export default router;

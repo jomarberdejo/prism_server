@@ -8,16 +8,12 @@ export const userHandler = {
   async getAll(c: Context) {
     const users = await userService.getAllUsers();
 
-   
-
-
     return c.json(
       {
         success: true,
         data: { users },
-        
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -30,7 +26,7 @@ export const userHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -43,7 +39,7 @@ export const userHandler = {
         success: true,
         data: { users },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -59,7 +55,7 @@ export const userHandler = {
         message: "Role updated successfully",
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -72,10 +68,7 @@ export const userHandler = {
         success: true,
         message: "User deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
-  
 };
-
-

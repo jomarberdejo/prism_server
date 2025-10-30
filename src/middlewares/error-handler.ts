@@ -8,4 +8,3 @@ export async function errorHandlerMiddleware(err: Error, c: Context) {
     status: statusCode,
   } as any);
 }
-

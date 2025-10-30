@@ -18,14 +18,12 @@ declare global {
 export const authMiddleware = async (c: Context, next: Next) => {
   const token = getCookie(c, COOKIE_NAMES.accessToken);
 
-
-
   if (!token) {
     throw new UnauthorizedError("No token provided");
   }
 
   const session = await sessionRepository.findByToken(token);
-  console.log(session)
+  console.log(session);
   if (!session || new Date() > session.expiresAt) {
     throw new UnauthorizedError("Session expired or invalid");
   }
@@ -49,7 +47,7 @@ export const requireRole = (allowedRoles: string[]) => {
   return async (c: Context, next: Next) => {
     const user = c.get("user") as UserPayload | undefined;
 
-    console.log(user)
+    console.log(user);
 
     if (!user || !allowedRoles.includes(user.role)) {
       throw new ForbiddenError("Insufficient permissions");

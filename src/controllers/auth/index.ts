@@ -1,8 +1,4 @@
-import {
-  deleteCookie,
-  getCookie,
-  setCookie,
-} from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
@@ -17,7 +13,12 @@ export const authHandler = {
       throw new BadRequestError("Missing required fields");
     }
 
-    const user = await authService.register(email, password, name, isDepartmentHead);
+    const user = await authService.register(
+      email,
+      password,
+      name,
+      isDepartmentHead,
+    );
 
     return c.json(
       {
@@ -25,7 +26,7 @@ export const authHandler = {
         message: "User registered successfully",
         data: { user },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
@@ -40,7 +41,7 @@ export const authHandler = {
     const token = await authService.createSession(
       user.id,
       user.email,
-      user.role
+      user.role,
     );
 
     setCookie(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
@@ -60,7 +61,7 @@ export const authHandler = {
           token,
         },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -78,7 +79,7 @@ export const authHandler = {
         success: true,
         message: "Logged out successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -89,7 +90,7 @@ export const authHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

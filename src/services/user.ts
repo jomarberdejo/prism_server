@@ -3,7 +3,6 @@ import { userRepository } from "@/data/user";
 import { ROLE } from "@/generated/prisma";
 import { NotFoundError, BadRequestError } from "@/utils/error";
 
-
 export const userService = {
   async getUserById(id: string) {
     const user = await userRepository.findById(id);
@@ -32,7 +31,6 @@ export const userService = {
     const user = await this.getUserById(userId);
     return userRepository.updateRole(userId, role);
   },
-
 
   async deleteUser(id: string) {
     await this.getUserById(id);

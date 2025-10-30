@@ -6282,19 +6282,14 @@ var authMiddleware = async (c, next) => {
   c.set("user", user);
   await next();
 };
-var requireRole = (allowedRoles) => {
-  return async (c, next) => {
-    const user = c.get("user");
-    console.log(user);
-    if (!user || !allowedRoles.includes(user.role)) {
-      throw new ForbiddenError("Insufficient permissions");
-    }
-    await next();
-  };
-};
 
 // src/constants/roles.ts
-var VALID_ROLES = ["SUPER_ADMIN", "ADMIN", "EDITOR", "VIEWER"];
+var VALID_ROLES = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "EDITOR",
+  "VIEWER"
+];
 
 // src/services/user.ts
 var userService = {
@@ -6390,7 +6385,7 @@ var userHandler = {
 
 // src/controllers/users/routes.ts
 var router = new import_hono.Hono();
-router.get("/users", authMiddleware, requireRole(["SUPER_ADMIN"]), userHandler.getAll);
+router.get("/users", authMiddleware, userHandler.getAll);
 var routes_default = router;
 
 // src/controllers/auth/routes.ts
@@ -6405,7 +6400,12 @@ var authHandler = {
     if (!email || !password || !name || !isDepartmentHead) {
       throw new BadRequestError("Missing required fields");
     }
-    const user = await authService.register(email, password, name, isDepartmentHead);
+    const user = await authService.register(
+      email,
+      password,
+      name,
+      isDepartmentHead
+    );
     return c.json(
       {
         success: true,
@@ -6621,8 +6621,88 @@ var ppaRepository = {
   }
 };
 
+// src/services/notificationService.ts
+var import_node_cron = __toESM(require("node-cron"));
+var import_expo_server_sdk = require("expo-server-sdk");
+var import_date_fns = require("date-fns");
+var expo = new import_expo_server_sdk.Expo();
+var sentReminders = /* @__PURE__ */ new Set();
+async function sendPushNotification({
+  id,
+  pushToken,
+  title,
+  body
+}) {
+  if (!import_expo_server_sdk.Expo.isExpoPushToken(pushToken)) {
+    console.warn(`\u274C Invalid Expo push token: ${pushToken}`);
+    return false;
+  }
+  try {
+    const tickets = await expo.sendPushNotificationsAsync([
+      {
+        to: pushToken,
+        sound: "default",
+        title,
+        body,
+        priority: "high",
+        channelId: "default"
+      }
+    ]);
+    console.log("\u2705 Notification sent:", tickets);
+    await ppaRepository.update(id, {
+      lastNotifiedAt: /* @__PURE__ */ new Date()
+    });
+    return true;
+  } catch (error) {
+    console.error("\u274C Error sending push notification:", error);
+    return false;
+  }
+}
+async function checkUpcomingPPAs() {
+  const ppas = await ppaRepository.findAllWithNoNotified();
+  for (const ppa of ppas) {
+    if (!ppa.startDate) continue;
+    const startDate = new Date(ppa.startDate);
+    if (!(0, import_date_fns.isTomorrow)(startDate)) continue;
+    const reminderKey = `${ppa.id}-tomorrow`;
+    if (sentReminders.has(reminderKey)) continue;
+    const success = await sendPushNotification({
+      id: ppa.id,
+      pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+      title: `\u{1F4C5} Reminder: ${ppa.task} starts tomorrow!`,
+      body: `It begins at ${startDate.toLocaleString("en-PH", {
+        timeZone: "Asia/Manila"
+      })}`
+    });
+    if (success) {
+      sentReminders.add(reminderKey);
+      console.log(`\u2705 Sent reminder for PPA: ${ppa.task}`);
+    }
+  }
+}
+async function remindReschedulePPA({
+  id,
+  title,
+  body
+}) {
+  const data = {
+    id,
+    pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+    title: `${title}`,
+    body: `${body}`
+  };
+  const success = await sendPushNotification(data);
+  console.log(success);
+}
+function startCronScheduler() {
+  import_node_cron.default.schedule("* * * * *", async () => {
+    console.log("\u23F0 Checking for PPAs starting tomorrow...");
+    await checkUpcomingPPAs();
+  });
+  console.log("\u2705 Cron scheduler started (runs every 1 minute)");
+}
+
 // src/services/ppa.ts
-var import_prisma5 = __toESM(require_prisma());
 var ppaService = {
   async getPPAById(id) {
     const ppa = await ppaRepository.findById(id);
@@ -6638,26 +6718,26 @@ var ppaService = {
   async getPPAsByImplementingUnit(implementingUnitId) {
     return ppaRepository.findByImplementingUnit(implementingUnitId);
   },
-  async createPPA(userRole, data) {
-    if (userRole !== import_prisma5.ROLE.SUPER_ADMIN) {
-      throw new ForbiddenError("Only SUPER_ADMIN can create PPA");
-    }
+  async createPPA(data) {
     if (!data.task || !data.sectorId || !data.implementingUnitId) {
       throw new BadRequestError("Missing required fields");
     }
     return ppaRepository.create(data);
   },
-  async updatePPA(userRole, id, data) {
+  async updatePPA(id, data) {
+    console.log("ID", id);
     const existing = await this.getPPAById(id);
-    if (userRole !== import_prisma5.ROLE.SUPER_ADMIN && userRole !== import_prisma5.ROLE.ADMIN) {
-      throw new ForbiddenError("You are not allowed to update this PPA");
-    }
-    return ppaRepository.update(id, data);
+    const updatedPPA = await ppaRepository.update(id, data);
+    const title = "PPA Reschuled Notification";
+    const body = `Reminder: The PPA ${updatedPPA.task} was rescheduled to ${updatedPPA.startDate} - ${updatedPPA.dueDate} from ${updatedPPA.startTime} - ${updatedPPA.dueTime} `;
+    await remindReschedulePPA({
+      id,
+      title,
+      body
+    });
+    return updatedPPA;
   },
-  async deletePPA(userRole, id) {
-    if (userRole !== import_prisma5.ROLE.SUPER_ADMIN) {
-      throw new ForbiddenError("Only SUPER_ADMIN can delete PPA");
-    }
+  async deletePPA(id) {
     await this.getPPAById(id);
     return ppaRepository.delete(id);
   }
@@ -6764,7 +6844,6 @@ var ppaHandler = {
     );
   },
   async create(c) {
-    const user = c.get("user");
     const body = await c.req.json();
     const requiredFields = [
       "task",
@@ -6780,7 +6859,7 @@ var ppaHandler = {
     for (const field of requiredFields) {
       if (!body[field]) throw new BadRequestError(`Missing field: ${field}`);
     }
-    const newPPA = await ppaService.createPPA(user.role, {
+    const newPPA = await ppaService.createPPA({
       task: body.task,
       description: body.description,
       address: body.address,
@@ -6804,15 +6883,14 @@ var ppaHandler = {
     );
   },
   async update(c) {
-    const user = c.get("user");
     const id = c.req.param("id");
     const data = await c.req.json();
     if (!id) throw new BadRequestError("Missing PPA ID");
-    const updated = await ppaService.updatePPA(user.role, id, data);
+    const updated = await ppaService.updatePPA(id, data);
     return c.json(
       {
         success: true,
-        message: "PPA updated successfully",
+        message: "PPA rescheduled successfully",
         data: updated
       },
       import_http_status_codes4.StatusCodes.OK
@@ -6822,7 +6900,7 @@ var ppaHandler = {
     const user = c.get("user");
     const id = c.req.param("id");
     if (!id) throw new BadRequestError("Missing PPA ID");
-    await ppaService.deletePPA(user.role, id);
+    await ppaService.deletePPA(id);
     return c.json(
       {
         success: true,
@@ -6835,12 +6913,12 @@ var ppaHandler = {
 
 // src/controllers/ppa/routes.ts
 var router3 = new import_hono3.Hono();
-router3.post("/ppas", authMiddleware, requireRole(["SUPER_ADMIN"]), ppaHandler.create);
+router3.post("/ppas", authMiddleware, ppaHandler.create);
 router3.post("/ppas/check-availability", ppaHandler.checkAvailability);
-router3.get("/ppas", authMiddleware, requireRole(["SUPER_ADMIN"]), ppaHandler.getAll);
-router3.get("/ppas/:id", authMiddleware, requireRole(["SUPER_ADMIN"]), ppaHandler.getById);
-router3.patch("/ppas/:id", authMiddleware, requireRole(["SUPER_ADMIN"]), ppaHandler.update);
-router3.delete("/ppas/:id", authMiddleware, requireRole(["SUPER_ADMIN"]), ppaHandler.delete);
+router3.get("/ppas", authMiddleware, ppaHandler.getAll);
+router3.get("/ppas/:id", authMiddleware, ppaHandler.getById);
+router3.patch("/ppas/:id", authMiddleware, ppaHandler.update);
+router3.delete("/ppas/:id", authMiddleware, ppaHandler.delete);
 var routes_default3 = router3;
 
 // src/controllers/sector/routes.ts
@@ -7174,8 +7252,8 @@ var sectorHandler = {
 
 // src/controllers/sector/routes.ts
 var router4 = new import_hono4.Hono();
-router4.get("/sectors", authMiddleware, requireRole(["SUPER_ADMIN"]), sectorHandler.getAll);
-router4.post("/sectors", authMiddleware, requireRole(["SUPER_ADMIN"]), sectorHandler.create);
+router4.get("/sectors", authMiddleware, sectorHandler.getAll);
+router4.post("/sectors", authMiddleware, sectorHandler.create);
 var routes_default4 = router4;
 
 // src/controllers/implementingUnit/routes.ts
@@ -7216,7 +7294,9 @@ var implementingUnitService = {
     }
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit) {
-      throw new ConflictError("Implementing unit with this name already exists");
+      throw new ConflictError(
+        "Implementing unit with this name already exists"
+      );
     }
     const user = await userRepository.findById(userId);
     if (!user) {
@@ -7243,7 +7323,9 @@ var implementingUnitService = {
     }
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit && existingUnit.id !== id) {
-      throw new ConflictError("Implementing unit with this name already exists");
+      throw new ConflictError(
+        "Implementing unit with this name already exists"
+      );
     }
     const user = await userRepository.findById(userId);
     if (!user) {
@@ -7253,7 +7335,9 @@ var implementingUnitService = {
     if (unit.userId !== userId) {
       const existingDeptHead = await implementingUnitRepository.findByUserId(userId);
       if (existingDeptHead && existingDeptHead.id !== id) {
-        throw new ConflictError("User is already assigned as a department head");
+        throw new ConflictError(
+          "User is already assigned as a department head"
+        );
       }
       await userRepository.updateDepartmentHeadStatus(unit.userId, false);
       await userRepository.updateDepartmentHeadStatus(userId, true);
@@ -7321,9 +7405,7 @@ var implementingUnitHandler = {
   },
   async getBySectorId(c) {
     const sectorId = c.req.param("sectorId");
-    const units = await implementingUnitService.getImplementingUnitsBySectorId(
-      sectorId
-    );
+    const units = await implementingUnitService.getImplementingUnitsBySectorId(sectorId);
     return c.json(
       {
         success: true,
@@ -7334,9 +7416,7 @@ var implementingUnitHandler = {
   },
   async getByUserId(c) {
     const userId = c.req.param("userId");
-    const unit = await implementingUnitService.getImplementingUnitByUserId(
-      userId
-    );
+    const unit = await implementingUnitService.getImplementingUnitByUserId(userId);
     return c.json(
       {
         success: true,
@@ -7416,13 +7496,41 @@ var implementingUnitHandler = {
 
 // src/controllers/implementingUnit/routes.ts
 var router5 = new import_hono5.Hono();
-router5.post("/implementing-units", authMiddleware, requireRole(["SUPER_ADMIN"]), implementingUnitHandler.create);
-router5.get("/implementing-units", authMiddleware, requireRole(["SUPER_ADMIN"]), implementingUnitHandler.getAll);
-router5.get("/implementing-units/sector/:sectorId", authMiddleware, requireRole(["SUPER_ADMIN"]), implementingUnitHandler.getBySectorId);
+router5.post(
+  "/implementing-units",
+  authMiddleware,
+  implementingUnitHandler.create
+);
+router5.get(
+  "/implementing-units",
+  authMiddleware,
+  implementingUnitHandler.getAll
+);
+router5.delete(
+  "/implementing-units/:id",
+  authMiddleware,
+  implementingUnitHandler.delete
+);
+router5.patch(
+  "/implementing-units/:id",
+  authMiddleware,
+  implementingUnitHandler.update
+);
+router5.get(
+  "/implementing-units/sector/:sectorId",
+  authMiddleware,
+  implementingUnitHandler.getBySectorId
+);
 var routes_default5 = router5;
 
 // src/controllers/routes.ts
-var routes = [routes_default, routes_default2, routes_default3, routes_default4, routes_default5];
+var routes = [
+  routes_default,
+  routes_default2,
+  routes_default3,
+  routes_default4,
+  routes_default5
+];
 
 // src/middlewares/error-handler.ts
 var import_hono6 = require("hono");
@@ -7437,70 +7545,6 @@ async function errorHandlerMiddleware(err, c) {
 // src/index.ts
 var import_logger = require("hono/logger");
 var import_node_cron2 = require("node-cron");
-
-// src/services/notificationService.ts
-var import_node_cron = __toESM(require("node-cron"));
-var import_expo_server_sdk = require("expo-server-sdk");
-var import_date_fns = require("date-fns");
-var expo = new import_expo_server_sdk.Expo();
-var sentReminders = /* @__PURE__ */ new Set();
-async function sendPushNotification(id, pushToken, title, body) {
-  if (!import_expo_server_sdk.Expo.isExpoPushToken(pushToken)) {
-    console.warn(`\u274C Invalid Expo push token: ${pushToken}`);
-    return false;
-  }
-  try {
-    const tickets = await expo.sendPushNotificationsAsync([
-      {
-        to: pushToken,
-        sound: "default",
-        title,
-        body,
-        priority: "high",
-        channelId: "default"
-      }
-    ]);
-    console.log("\u2705 Notification sent:", tickets);
-    await ppaRepository.update(id, {
-      lastNotifiedAt: /* @__PURE__ */ new Date()
-    });
-    return true;
-  } catch (error) {
-    console.error("\u274C Error sending push notification:", error);
-    return false;
-  }
-}
-async function checkUpcomingPPAs() {
-  const ppas = await ppaRepository.findAllWithNoNotified();
-  for (const ppa of ppas) {
-    if (!ppa.startDate) continue;
-    const startDate = new Date(ppa.startDate);
-    if (!(0, import_date_fns.isTomorrow)(startDate)) continue;
-    const reminderKey = `${ppa.id}-tomorrow`;
-    if (sentReminders.has(reminderKey)) continue;
-    const success = await sendPushNotification(
-      ppa.id,
-      "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
-      `\u{1F4C5} Reminder: ${ppa.task} starts tomorrow!`,
-      `It begins at ${startDate.toLocaleString("en-PH", {
-        timeZone: "Asia/Manila"
-      })}`
-    );
-    if (success) {
-      sentReminders.add(reminderKey);
-      console.log(`\u2705 Sent reminder for PPA: ${ppa.task}`);
-    }
-  }
-}
-function startCronScheduler() {
-  import_node_cron.default.schedule("* * * * *", async () => {
-    console.log("\u23F0 Checking for PPAs starting tomorrow...");
-    await checkUpcomingPPAs();
-  });
-  console.log("\u2705 Cron scheduler started (runs every 1 minute)");
-}
-
-// src/index.ts
 var app = new import_hono7.Hono();
 app.onError(errorHandlerMiddleware);
 app.use((0, import_logger.logger)());

@@ -1,11 +1,6 @@
-
 import { implementingUnitRepository } from "@/data/implementingUnit";
 import { sectorRepository } from "@/data/sector";
-import {
-  NotFoundError,
-  BadRequestError,
-  ConflictError,
-} from "@/utils/error";
+import { NotFoundError, BadRequestError, ConflictError } from "@/utils/error";
 
 export const sectorService = {
   async getAllSectors() {
@@ -43,7 +38,6 @@ export const sectorService = {
       throw new NotFoundError("Sector not found");
     }
 
-    // Check if name is already taken by another sector
     const existingSector = await sectorRepository.findByName(name);
     if (existingSector && existingSector.id !== id) {
       throw new ConflictError("Sector with this name already exists");
@@ -58,11 +52,11 @@ export const sectorService = {
       throw new NotFoundError("Sector not found");
     }
 
-    // Check if sector has implementing units
-    const implementingUnits = await implementingUnitRepository.findBySectorId(id);
+    const implementingUnits =
+      await implementingUnitRepository.findBySectorId(id);
     if (implementingUnits.length > 0) {
       throw new BadRequestError(
-        "Cannot delete sector with existing implementing units"
+        "Cannot delete sector with existing implementing units",
       );
     }
 

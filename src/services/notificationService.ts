@@ -6,12 +6,17 @@ import { ppaRepository } from "@/data/ppa";
 const expo = new Expo();
 const sentReminders = new Set<string>();
 
-async function sendPushNotification(
-  id: string,
-  pushToken: string,
-  title: string,
-  body: string
-) {
+async function sendPushNotification({
+  id,
+  pushToken,
+  title,
+  body,
+}: {
+  id?: string;
+  pushToken: string;
+  title: string;
+  body: string;
+}) {
   if (!Expo.isExpoPushToken(pushToken)) {
     console.warn(`❌ Invalid Expo push token: ${pushToken}`);
     return false;
@@ -27,11 +32,10 @@ async function sendPushNotification(
         priority: "high",
         channelId: "default",
       },
-      
     ]);
     console.log("✅ Notification sent:", tickets);
 
-    await ppaRepository.update(id, {
+    await ppaRepository.update(id as string, {
       lastNotifiedAt: new Date(),
     });
 
@@ -55,20 +59,40 @@ async function checkUpcomingPPAs() {
     const reminderKey = `${ppa.id}-tomorrow`;
     if (sentReminders.has(reminderKey)) continue;
 
-    const success = await sendPushNotification(
-      ppa.id,
-      "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
-      `📅 Reminder: ${ppa.task} starts tomorrow!`,
-      `It begins at ${startDate.toLocaleString("en-PH", {
+    const success = await sendPushNotification({
+      id: ppa.id,
+      pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+      title: `📅 Reminder: ${ppa.task} starts tomorrow!`,
+      body: `It begins at ${startDate.toLocaleString("en-PH", {
         timeZone: "Asia/Manila",
-      })}`
-    );
+      })}`,
+    });
 
     if (success) {
       sentReminders.add(reminderKey);
       console.log(`✅ Sent reminder for PPA: ${ppa.task}`);
     }
   }
+}
+
+export async function remindReschedulePPA({
+  id,
+  title,
+  body,
+}: {
+  id: string;
+  title: string;
+  body: string;
+}) {
+  const data = {
+    id,
+    pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+    title: `${title}`,
+    body: `${body}`,
+  };
+  const success = await sendPushNotification(data);
+
+  console.log(success);
 }
 
 export function startCronScheduler() {

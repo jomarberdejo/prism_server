@@ -1,12 +1,7 @@
-
 import { implementingUnitRepository } from "@/data/implementingUnit";
 import { sectorRepository } from "@/data/sector";
 import { userRepository } from "@/data/user";
-import {
-  NotFoundError,
-  BadRequestError,
-  ConflictError,
-} from "@/utils/error";
+import { NotFoundError, BadRequestError, ConflictError } from "@/utils/error";
 
 export const implementingUnitService = {
   async getAllImplementingUnits() {
@@ -38,18 +33,16 @@ export const implementingUnitService = {
     return unit;
   },
 
-  async createImplementingUnit(
-    name: string,
-    userId: string,
-    sectorId: string
-  ) {
+  async createImplementingUnit(name: string, userId: string, sectorId: string) {
     if (!name || !userId || !sectorId) {
       throw new BadRequestError("Name, userId, and sectorId are required");
     }
 
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit) {
-      throw new ConflictError("Implementing unit with this name already exists");
+      throw new ConflictError(
+        "Implementing unit with this name already exists",
+      );
     }
 
     const user = await userRepository.findById(userId);
@@ -57,7 +50,8 @@ export const implementingUnitService = {
       throw new NotFoundError("User not found");
     }
 
-    const existingDeptHead = await implementingUnitRepository.findByUserId(userId);
+    const existingDeptHead =
+      await implementingUnitRepository.findByUserId(userId);
     if (existingDeptHead) {
       throw new ConflictError("User is already assigned as a department head");
     }
@@ -76,7 +70,7 @@ export const implementingUnitService = {
     id: string,
     name: string,
     userId: string,
-    sectorId: string
+    sectorId: string,
   ) {
     if (!name || !userId || !sectorId) {
       throw new BadRequestError("Name, userId, and sectorId are required");
@@ -89,7 +83,9 @@ export const implementingUnitService = {
 
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit && existingUnit.id !== id) {
-      throw new ConflictError("Implementing unit with this name already exists");
+      throw new ConflictError(
+        "Implementing unit with this name already exists",
+      );
     }
 
     const user = await userRepository.findById(userId);
@@ -97,12 +93,15 @@ export const implementingUnitService = {
       throw new NotFoundError("User not found");
     }
 
-    console.log("USER ID", userId)
+    console.log("USER ID", userId);
 
     if (unit.userId !== userId) {
-      const existingDeptHead = await implementingUnitRepository.findByUserId(userId);
+      const existingDeptHead =
+        await implementingUnitRepository.findByUserId(userId);
       if (existingDeptHead && existingDeptHead.id !== id) {
-        throw new ConflictError("User is already assigned as a department head");
+        throw new ConflictError(
+          "User is already assigned as a department head",
+        );
       }
 
       await userRepository.updateDepartmentHeadStatus(unit.userId, false);
@@ -126,7 +125,7 @@ export const implementingUnitService = {
 
     if (unit._count.PPA > 0) {
       throw new BadRequestError(
-        "Cannot delete implementing unit with existing PPAs"
+        "Cannot delete implementing unit with existing PPAs",
       );
     }
 
@@ -146,7 +145,8 @@ export const implementingUnitService = {
       throw new NotFoundError("User not found");
     }
 
-    const existingDeptHead = await implementingUnitRepository.findByUserId(newUserId);
+    const existingDeptHead =
+      await implementingUnitRepository.findByUserId(newUserId);
     if (existingDeptHead && existingDeptHead.id !== id) {
       throw new ConflictError("User is already assigned as a department head");
     }

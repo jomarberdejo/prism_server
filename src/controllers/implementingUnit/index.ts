@@ -1,5 +1,3 @@
-
-
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
@@ -13,7 +11,7 @@ export const implementingUnitHandler = {
         success: true,
         data: { implementingUnits: units },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -26,37 +24,35 @@ export const implementingUnitHandler = {
         success: true,
         data: { implementingUnit: unit },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async getBySectorId(c: Context) {
     const sectorId = c.req.param("sectorId");
-    const units = await implementingUnitService.getImplementingUnitsBySectorId(
-      sectorId
-    );
+    const units =
+      await implementingUnitService.getImplementingUnitsBySectorId(sectorId);
 
     return c.json(
       {
         success: true,
         data: { implementingUnits: units },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async getByUserId(c: Context) {
     const userId = c.req.param("userId");
-    const unit = await implementingUnitService.getImplementingUnitByUserId(
-      userId
-    );
+    const unit =
+      await implementingUnitService.getImplementingUnitByUserId(userId);
 
     return c.json(
       {
         success: true,
         data: { implementingUnit: unit },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -70,7 +66,7 @@ export const implementingUnitHandler = {
     const unit = await implementingUnitService.createImplementingUnit(
       name,
       userId,
-      sectorId
+      sectorId,
     );
 
     return c.json(
@@ -79,7 +75,7 @@ export const implementingUnitHandler = {
         message: "Implementing unit created successfully",
         data: { implementingUnit: unit },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
@@ -95,7 +91,7 @@ export const implementingUnitHandler = {
       id,
       name,
       userId,
-      sectorId
+      sectorId,
     );
 
     return c.json(
@@ -104,7 +100,7 @@ export const implementingUnitHandler = {
         message: "Implementing unit updated successfully",
         data: { implementingUnit: unit },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -117,7 +113,7 @@ export const implementingUnitHandler = {
         success: true,
         message: "Implementing unit deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -137,7 +133,7 @@ export const implementingUnitHandler = {
         message: "Department head changed successfully",
         data: { implementingUnit: unit },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

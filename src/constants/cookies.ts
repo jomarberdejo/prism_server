@@ -12,4 +12,4 @@ export const COOKIE_CONFIG = {
   path: "/",
 } as const;
 
-export const JWT_SECRET = envConfig.JWT_SECRET
+export const JWT_SECRET = envConfig.JWT_SECRET;

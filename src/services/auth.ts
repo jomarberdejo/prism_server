@@ -1,4 +1,3 @@
-
 import {
   ConflictError,
   UnauthorizedError,
@@ -12,7 +11,7 @@ import { sessionRepository } from "@/data/session";
 import { envConfig } from "@/env";
 
 export const authService = {
-  generateToken(payload: TokenPayload): Promise <string> {
+  generateToken(payload: TokenPayload): Promise<string> {
     return sign(payload, envConfig.JWT_SECRET, "HS256");
   },
 
@@ -37,7 +36,12 @@ export const authService = {
     return bcrypt.compare(password, hash);
   },
 
-  async register(email: string, password: string, name: string, isDepartmentHead: boolean) {
+  async register(
+    email: string,
+    password: string,
+    name: string,
+    isDepartmentHead: boolean,
+  ) {
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
       throw new ConflictError("Email already in use");
@@ -57,13 +61,12 @@ export const authService = {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-
     const isPasswordValid = await this.comparePassword(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-    await userRepository.updatePushToken(email, pushToken)
+    await userRepository.updatePushToken(email, pushToken);
 
     return user;
   },
@@ -71,7 +74,7 @@ export const authService = {
   async createSession(
     userId: string,
     email: string,
-    role: string
+    role: string,
   ): Promise<string> {
     await sessionRepository.deleteByUserId(userId);
 

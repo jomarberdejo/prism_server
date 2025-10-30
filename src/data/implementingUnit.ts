@@ -83,7 +83,7 @@ export const implementingUnitRepository = {
   },
 
   async update(id: string, name: string, userId: string, sectorId: string) {
-    console.log("PRISMA UPDATE: ", id)
+    console.log("PRISMA UPDATE: ", id);
     return prisma.implementingUnit.update({
       where: { id },
       data: { name, userId, sectorId },

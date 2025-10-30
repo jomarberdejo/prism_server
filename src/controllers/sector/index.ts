@@ -1,4 +1,3 @@
-
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
@@ -12,7 +11,7 @@ export const sectorHandler = {
         success: true,
         data: { sectors },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -25,7 +24,7 @@ export const sectorHandler = {
         success: true,
         data: { sector },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -44,7 +43,7 @@ export const sectorHandler = {
         message: "Sector created successfully",
         data: { sector },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
@@ -64,7 +63,7 @@ export const sectorHandler = {
         message: "Sector updated successfully",
         data: { sector },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -77,7 +76,7 @@ export const sectorHandler = {
         success: true,
         message: "Sector deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -90,9 +89,7 @@ export const sectorHandler = {
         success: true,
         data: { stats },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };
-
-

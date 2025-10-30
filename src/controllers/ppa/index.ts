@@ -12,7 +12,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -26,7 +26,7 @@ export const ppaHandler = {
         success: true,
         data: { ppa },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -40,7 +40,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -55,43 +55,42 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
- async checkAvailability(c: Context) {
-     const body = await c.req.json();
- 
-     if (!body.startDate || !body.dueDate) {
-       throw new BadRequestError("Start date and due date are required");
-     }
- 
-     const { startDate, dueDate, excludePPAId } = body;
- 
-     const result = await venueService.checkLocationAvailability(
-       new Date(startDate),
-       new Date(dueDate),
-       excludePPAId
-     );
- 
-     return c.json(
-       {
-         success: true,
-         data: {
-           available: result.available,
-           conflictingPPAs: result.conflictingPPAs,
-           message:
-             result.conflictingPPAs.length === 0
-               ? "No PPAs scheduled in this date range"
-               : `${result.conflictingPPAs.length} PPA(s) scheduled in this date range`,
-         },
-       },
-       StatusCodes.OK
-     );
-   },
+  async checkAvailability(c: Context) {
+    const body = await c.req.json();
+
+    if (!body.startDate || !body.dueDate) {
+      throw new BadRequestError("Start date and due date are required");
+    }
+
+    const { startDate, dueDate, excludePPAId } = body;
+
+    const result = await venueService.checkLocationAvailability(
+      new Date(startDate),
+      new Date(dueDate),
+      excludePPAId,
+    );
+
+    return c.json(
+      {
+        success: true,
+        data: {
+          available: result.available,
+          conflictingPPAs: result.conflictingPPAs,
+          message:
+            result.conflictingPPAs.length === 0
+              ? "No PPAs scheduled in this date range"
+              : `${result.conflictingPPAs.length} PPA(s) scheduled in this date range`,
+        },
+      },
+      StatusCodes.OK,
+    );
+  },
 
   async create(c: Context) {
-    const user = c.get("user");
     const body = await c.req.json();
 
     const requiredFields = [
@@ -110,7 +109,7 @@ export const ppaHandler = {
       if (!body[field]) throw new BadRequestError(`Missing field: ${field}`);
     }
 
-    const newPPA = await ppaService.createPPA(user.role, {
+    const newPPA = await ppaService.createPPA({
       task: body.task,
       description: body.description,
       address: body.address,
@@ -131,26 +130,25 @@ export const ppaHandler = {
         message: "PPA created successfully",
         data: { ppa: newPPA },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
   async update(c: Context) {
-    const user = c.get("user");
     const id = c.req.param("id");
     const data = await c.req.json();
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    const updated = await ppaService.updatePPA(user.role, id, data);
+    const updated = await ppaService.updatePPA(id, data);
 
     return c.json(
       {
         success: true,
-        message: "PPA updated successfully",
+        message: "PPA rescheduled successfully",
         data: updated,
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -160,14 +158,14 @@ export const ppaHandler = {
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    await ppaService.deletePPA(user.role, id);
+    await ppaService.deletePPA(id);
 
     return c.json(
       {
         success: true,
         message: "PPA deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

@@ -1,6 +1,7 @@
 import { ppaRepository } from "@/data/ppa";
 import { ROLE } from "@/generated/prisma";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/utils/error";
+import { remindReschedulePPA } from "./notificationService";
 
 export const ppaService = {
   async getPPAById(id: string) {
@@ -21,11 +22,7 @@ export const ppaService = {
     return ppaRepository.findByImplementingUnit(implementingUnitId);
   },
 
-  async createPPA(userRole: ROLE, data: Parameters<typeof ppaRepository.create>[0]) {
-    if (userRole !== ROLE.SUPER_ADMIN) {
-      throw new ForbiddenError("Only SUPER_ADMIN can create PPA");
-    }
-
+  async createPPA(data: Parameters<typeof ppaRepository.create>[0]) {
     if (!data.task || !data.sectorId || !data.implementingUnitId) {
       throw new BadRequestError("Missing required fields");
     }
@@ -33,21 +30,23 @@ export const ppaService = {
     return ppaRepository.create(data);
   },
 
-  async updatePPA(userRole: ROLE, id: string, data: any) {
+  async updatePPA(id: string, data: any) {
+    console.log("ID", id);
     const existing = await this.getPPAById(id);
 
-    if (userRole !== ROLE.SUPER_ADMIN && userRole !== ROLE.ADMIN) {
-      throw new ForbiddenError("You are not allowed to update this PPA");
-    }
+    const updatedPPA = await ppaRepository.update(id, data);
+    const title = "PPA Reschuled Notification";
+    const body = `Reminder: The PPA ${updatedPPA.task} was rescheduled to ${updatedPPA.startDate} - ${updatedPPA.dueDate} from ${updatedPPA.startTime} - ${updatedPPA.dueTime} `;
+    await remindReschedulePPA({
+      id,
+      title,
+      body,
+    });
 
-    return ppaRepository.update(id, data);
+    return updatedPPA;
   },
 
-  async deletePPA(userRole: ROLE, id: string) {
-    if (userRole !== ROLE.SUPER_ADMIN) {
-      throw new ForbiddenError("Only SUPER_ADMIN can delete PPA");
-    }
-
+  async deletePPA(id: string) {
     await this.getPPAById(id);
     return ppaRepository.delete(id);
   },

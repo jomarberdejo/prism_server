@@ -109,7 +109,7 @@ export const ppaRepository = {
   // },
 
   // async findConflictingLocations(
-    
+
   //   startDate: Date,
   //   dueDate: Date,
   //   excludePPAId?: string
@@ -135,39 +135,38 @@ export const ppaRepository = {
   //   });
   // },
 
+  async findOverlappingPPAs(
+    startDate: Date,
+    dueDate: Date,
+    excludePPAId?: string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(dueDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
 
-   async findOverlappingPPAs(
-      startDate: Date,
-      dueDate: Date,
-      excludePPAId?: string
-    ) {
-      const start = new Date(startDate);
-      const end = new Date(dueDate);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-  
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-  
-      const whereClause: any = {
-        AND: [
-          { startDate: { lte: end } },
-          { dueDate: { gte: start } },
-          { dueDate: { gt: today } },
-        ],
-      };
-  
-      if (excludePPAId) {
-        whereClause.id = { not: excludePPAId };
-      }
-  
-      return prisma.pPA.findMany({
-        where: whereClause,
-        include: {
-          sector: { select: { id: true, name: true } },
-          implementingUnit: { select: { id: true, name: true } },
-        },
-        orderBy: { startDate: "asc" },
-      });
-    },
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const whereClause: any = {
+      AND: [
+        { startDate: { lte: end } },
+        { dueDate: { gte: start } },
+        { dueDate: { gt: today } },
+      ],
+    };
+
+    if (excludePPAId) {
+      whereClause.id = { not: excludePPAId };
+    }
+
+    return prisma.pPA.findMany({
+      where: whereClause,
+      include: {
+        sector: { select: { id: true, name: true } },
+        implementingUnit: { select: { id: true, name: true } },
+      },
+      orderBy: { startDate: "asc" },
+    });
+  },
 };

@@ -25,7 +25,12 @@ export const userRepository = {
     });
   },
 
-  async create(email: string, hashedPassword: string, name: string, isDepartmentHead: boolean) {
+  async create(
+    email: string,
+    hashedPassword: string,
+    name: string,
+    isDepartmentHead: boolean,
+  ) {
     return prisma.user.create({
       data: { email, password: hashedPassword, name, isDepartmentHead },
       select: userSelect,

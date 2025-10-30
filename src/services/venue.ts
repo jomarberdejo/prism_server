@@ -1,16 +1,15 @@
 import { ppaRepository } from "@/data/ppa";
 
-
 export const venueService = {
   async checkLocationAvailability(
     startDate: Date,
     dueDate: Date,
-    excludePPAId?: string
+    excludePPAId?: string,
   ) {
     const ppas = await ppaRepository.findOverlappingPPAs(
       startDate,
       dueDate,
-      excludePPAId
+      excludePPAId,
     );
 
     const conflictingPPAs = ppas.map((ppa) => ({

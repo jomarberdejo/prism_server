@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -21,6 +20,20 @@ enum ROLE {
   VIEWER
 }
 
+enum USER_STATUS {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum PPA_STATUS {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  ARCHIVED
+}
+
 model User {
   id               String            @id @default(cuid())
   email            String            @unique
@@ -33,6 +46,8 @@ model User {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   pushToken        String?
+  status           USER_STATUS       @default(PENDING)
+  ownedPPAs        PPA[]
 
   @@index([email])
 }
@@ -49,20 +64,17 @@ model Session {
 }
 
 model Sector {
-  id               String             @id @default(cuid())
-  name             String
-  description      String
-  PPA              PPA[]
-  ImplementingUnit ImplementingUnit[]
+  id          String @id @default(cuid())
+  name        String
+  description String
+  PPA         PPA[]
 }
 
 model ImplementingUnit {
   id       String @id @default(cuid())
   name     String
   userId   String @unique
-  sectorId String
   deptHead User   @relation(fields: [userId], references: [id])
-  sector   Sector @relation(fields: [sectorId], references: [id])
   PPA      PPA[]
 }
 
@@ -71,16 +83,24 @@ model PPA {
   task               String
   description        String
   address            String
-  location           String?
   venue              String?
   startDate          DateTime
   dueDate            DateTime
   startTime          DateTime
   dueTime            DateTime
+  budgetAllocation   String
+  approvedBudget     String
   expectedOutput     String
+  actualOutput       String?
+  remarks            String?
+  delayedReason      String?
   sectorId           String
   implementingUnitId String
   sector             Sector           @relation(fields: [sectorId], references: [id])
   implementingUnit   ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
+  status             PPA_STATUS       @default(NOT_STARTED)
   lastNotifiedAt     DateTime?
+  archivedAt         DateTime?
+  userId             String?
+  User               User?            @relation(fields: [userId], references: [id])
 }

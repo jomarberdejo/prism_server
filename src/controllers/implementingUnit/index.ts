@@ -28,20 +28,7 @@ export const implementingUnitHandler = {
     );
   },
 
-  async getBySectorId(c: Context) {
-    const sectorId = c.req.param("sectorId");
-    const units =
-      await implementingUnitService.getImplementingUnitsBySectorId(sectorId);
-
-    return c.json(
-      {
-        success: true,
-        data: { implementingUnits: units },
-      },
-      StatusCodes.OK,
-    );
-  },
-
+ 
   async getByUserId(c: Context) {
     const userId = c.req.param("userId");
     const unit =
@@ -57,16 +44,15 @@ export const implementingUnitHandler = {
   },
 
   async create(c: Context) {
-    const { name, userId, sectorId } = await c.req.json();
+    const { name, userId } = await c.req.json();
 
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
 
     const unit = await implementingUnitService.createImplementingUnit(
       name,
       userId,
-      sectorId,
     );
 
     return c.json(
@@ -81,17 +67,16 @@ export const implementingUnitHandler = {
 
   async update(c: Context) {
     const id = c.req.param("id");
-    const { name, userId, sectorId } = await c.req.json();
+    const { name, userId } = await c.req.json();
 
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
 
     const unit = await implementingUnitService.updateImplementingUnit(
       id,
       name,
       userId,
-      sectorId,
     );
 
     return c.json(

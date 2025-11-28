@@ -1,12 +1,12 @@
-import { Prisma } from "@/generated/prisma";
 import prisma from "@/lib/prisma";
+import { ForbiddenError, UnauthorizedError } from "@/utils/error";
+import { PPA_STATUS, type Prisma } from "@prisma/client";
 
 const ppaSelect: Prisma.PPASelect = {
   id: true,
   task: true,
   description: true,
   address: true,
-  location: true,
   venue: true,
   expectedOutput: true,
   startDate: true,
@@ -17,6 +17,14 @@ const ppaSelect: Prisma.PPASelect = {
   implementingUnit: true,
   sectorId: true,
   lastNotifiedAt: true,
+  archivedAt: true,
+  userId: true,
+  status: true,
+  remarks: true,
+  actualOutput: true,
+  delayedReason: true,
+  budgetAllocation: true,
+  approvedBudget: true,
 } as const;
 
 export const ppaRepository = {
@@ -31,6 +39,21 @@ export const ppaRepository = {
     return prisma.pPA.findMany({
       select: ppaSelect,
       orderBy: { startDate: "asc" },
+      where: {
+        archivedAt: null,
+      },
+    });
+  },
+
+  async findAllArchived() {
+    return prisma.pPA.findMany({
+      select: ppaSelect,
+      orderBy: { startDate: "asc" },
+      where: {
+        archivedAt: {
+          not: null,
+        },
+      },
     });
   },
 
@@ -63,14 +86,16 @@ export const ppaRepository = {
     description: string;
     address: string;
     expectedOutput: string;
-    location?: string;
     venue?: string;
     startDate: Date;
     dueDate: Date;
     startTime: Date;
     dueTime: Date;
     sectorId: string;
+    approvedBudget: string;
+    budgetAllocation: string;
     implementingUnitId: string;
+    userId: string;
   }) {
     return prisma.pPA.create({
       data,
@@ -78,17 +103,52 @@ export const ppaRepository = {
     });
   },
 
-  async update(id: string, data: Prisma.PPAUpdateInput) {
+  async update(ppaId: string, data: Prisma.PPAUpdateInput, userId?: string) {
+    const ppa = await prisma.pPA.findFirst({
+      where: {
+        id: ppaId,
+        userId,
+      },
+      select: { id: true },
+    });
+
+    console.log("USERID: ", userId);
+    console.log("PPAUSERID: ", ppa);
+
+    if (!ppa) {
+      throw new ForbiddenError(
+        "You are not authorized to perform this action."
+      );
+    }
+
     return prisma.pPA.update({
-      where: { id },
+      where: {
+        id: ppaId,
+      },
       data,
       select: ppaSelect,
     });
   },
 
-  async delete(id: string) {
-    return prisma.pPA.delete({
-      where: { id },
+  async delete(userId: string, ppaId: string) {
+    const ppa = await prisma.pPA.findFirst({
+      where: {
+        id: ppaId,
+        userId,
+      },
+      select: { id: true },
+    });
+
+    if (!ppa) {
+      throw new ForbiddenError(
+        "You are not authorized to perform this action."
+      );
+    }
+
+    return prisma.pPA.update({
+      where: { id: ppaId },
+      data: { archivedAt: new Date()},
+      select: ppaSelect,
     });
   },
 
@@ -139,6 +199,7 @@ export const ppaRepository = {
     startDate: Date,
     dueDate: Date,
     excludePPAId?: string,
+    venue?: string
   ) {
     const start = new Date(startDate);
     const end = new Date(dueDate);
@@ -153,6 +214,9 @@ export const ppaRepository = {
         { startDate: { lte: end } },
         { dueDate: { gte: start } },
         { dueDate: { gt: today } },
+        {
+          venue: venue,
+        },
       ],
     };
 

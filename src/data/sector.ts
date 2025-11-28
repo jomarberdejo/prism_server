@@ -6,7 +6,6 @@ const sectorSelect = {
   description: true,
   _count: {
     select: {
-      ImplementingUnit: true,
       PPA: true,
     },
   },
@@ -25,19 +24,7 @@ export const sectorRepository = {
       where: { id },
       select: {
         ...sectorSelect,
-        ImplementingUnit: {
-          select: {
-            id: true,
-            name: true,
-            deptHead: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+
         PPA: {
           select: {
             id: true,
@@ -87,7 +74,6 @@ export const sectorRepository = {
         description: true,
         _count: {
           select: {
-            ImplementingUnit: true,
             PPA: true,
           },
         },

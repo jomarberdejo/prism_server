@@ -1,11 +1,10 @@
-import { Prisma } from "@/generated/prisma";
 import prisma from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 const implementingUnitSelect: Prisma.ImplementingUnitSelect = {
   id: true,
   name: true,
   userId: true,
-  sectorId: true,
   deptHead: {
     select: {
       id: true,
@@ -14,13 +13,7 @@ const implementingUnitSelect: Prisma.ImplementingUnitSelect = {
       role: true,
     },
   },
-  sector: {
-    select: {
-      id: true,
-      name: true,
-      description: true,
-    },
-  },
+
   _count: {
     select: {
       PPA: true,
@@ -55,12 +48,7 @@ export const implementingUnitRepository = {
     });
   },
 
-  async findBySectorId(sectorId: string) {
-    return prisma.implementingUnit.findMany({
-      where: { sectorId },
-      select: implementingUnitSelect,
-    });
-  },
+ 
 
   async findByUserId(userId: string) {
     return prisma.implementingUnit.findUnique({
@@ -75,18 +63,18 @@ export const implementingUnitRepository = {
     });
   },
 
-  async create(name: string, userId: string, sectorId: string) {
+  async create(name: string, userId: string) {
     return prisma.implementingUnit.create({
-      data: { name, userId, sectorId },
+      data: { name, userId },
       select: implementingUnitSelect,
     });
   },
 
-  async update(id: string, name: string, userId: string, sectorId: string) {
+  async update(id: string, name: string, userId: string) {
     console.log("PRISMA UPDATE: ", id);
     return prisma.implementingUnit.update({
       where: { id },
-      data: { name, userId, sectorId },
+      data: { name, userId },
       select: implementingUnitSelect,
     });
   },

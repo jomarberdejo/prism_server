@@ -1,5 +1,5 @@
-import { Prisma, ROLE } from "@/generated/prisma";
 import prisma from "@/lib/prisma";
+import type { Prisma, ROLE } from "@prisma/client";
 
 const userSelect: Prisma.UserSelect = {
   id: true,
@@ -9,6 +9,7 @@ const userSelect: Prisma.UserSelect = {
   createdAt: true,
   isDepartmentHead: true,
   pushToken: true,
+  status: true,
 } as const;
 
 export const userRepository = {
@@ -30,9 +31,10 @@ export const userRepository = {
     hashedPassword: string,
     name: string,
     isDepartmentHead: boolean,
+    role: ROLE,
   ) {
     return prisma.user.create({
-      data: { email, password: hashedPassword, name, isDepartmentHead },
+      data: { email, password: hashedPassword, name, isDepartmentHead, role },
       select: userSelect,
     });
   },
@@ -51,6 +53,7 @@ export const userRepository = {
           },
         },
       },
+      
     });
   },
 

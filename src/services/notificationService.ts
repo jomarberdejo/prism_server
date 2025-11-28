@@ -1,18 +1,19 @@
 import cron from "node-cron";
 import { Expo } from "expo-server-sdk";
-import { isTomorrow, subDays, startOfDay, endOfDay } from "date-fns";
+import { isTomorrow } from "date-fns";
 import { ppaRepository } from "@/data/ppa";
+import { formatDate, formatTime } from "@/utils/dates";
 
 const expo = new Expo();
 const sentReminders = new Set<string>();
 
 async function sendPushNotification({
-  id,
+  ppaId,
   pushToken,
   title,
   body,
 }: {
-  id?: string;
+  ppaId?: string;
   pushToken: string;
   title: string;
   body: string;
@@ -35,7 +36,7 @@ async function sendPushNotification({
     ]);
     console.log("✅ Notification sent:", tickets);
 
-    await ppaRepository.update(id as string, {
+    await ppaRepository.update(ppaId as string, {
       lastNotifiedAt: new Date(),
     });
 
@@ -60,12 +61,10 @@ async function checkUpcomingPPAs() {
     if (sentReminders.has(reminderKey)) continue;
 
     const success = await sendPushNotification({
-      id: ppa.id,
-      pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+      ppaId: ppa.id,
+      pushToken: "ExponentPushToken[wNGmf-KRx9kYapx0ufw7Su]",
       title: `📅 Reminder: ${ppa.task} starts tomorrow!`,
-      body: `It begins at ${startDate.toLocaleString("en-PH", {
-        timeZone: "Asia/Manila",
-      })}`,
+      body: `It begins at ${formatTime(ppa.startDate)} and ends on ${formatDate(ppa.dueDate)} at ${formatTime(ppa.dueTime)}. Don't forget to prepare!`,
     });
 
     if (success) {
@@ -76,23 +75,23 @@ async function checkUpcomingPPAs() {
 }
 
 export async function remindReschedulePPA({
-  id,
+  ppaId,
   title,
   body,
 }: {
-  id: string;
+  ppaId: string;
   title: string;
   body: string;
 }) {
   const data = {
-    id,
-    pushToken: "ExponentPushToken[eRawYMG-CSemOXAVYYNJfl]",
+    ppaId,
+    pushToken: "ExponentPushToken[wNGmf-KRx9kYapx0ufw7Su]",
     title: `${title}`,
     body: `${body}`,
   };
   const success = await sendPushNotification(data);
 
-  console.log(success);
+  console.log("RESCHEDULE NOTIFICATION SENT:", success);
 }
 
 export function startCronScheduler() {

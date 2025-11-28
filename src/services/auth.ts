@@ -9,15 +9,16 @@ import bcrypt from "bcryptjs";
 import { userRepository } from "@/data/user";
 import { sessionRepository } from "@/data/session";
 import { envConfig } from "@/env";
+import { USER_STATUS, type ROLE } from "@prisma/client";
 
 export const authService = {
   generateToken(payload: TokenPayload): Promise<string> {
-    return sign(payload, envConfig.JWT_SECRET, "HS256");
+    return sign(payload, envConfig.JWT_SECRET!, "HS256");
   },
 
   async verifyToken(token: string): Promise<TokenPayload | null> {
     try {
-      const payload = await verify(token, envConfig.JWT_SECRET, "HS256");
+      const payload = await verify(token, envConfig.JWT_SECRET!, "HS256");
       return {
         userId: payload.userId as string,
         email: payload.email as string,
@@ -41,6 +42,7 @@ export const authService = {
     password: string,
     name: string,
     isDepartmentHead: boolean,
+    role: ROLE
   ) {
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
@@ -52,13 +54,26 @@ export const authService = {
     }
 
     const hashedPassword = await this.hashPassword(password);
-    return userRepository.create(email, hashedPassword, name, isDepartmentHead);
+    return userRepository.create(
+      email,
+      hashedPassword,
+      name,
+      isDepartmentHead,
+      role
+    );
   },
 
-  async login(email: string, password: string, pushToken: string) {
+  async login(email: string, password: string, pushToken?: string) {
     const user = await userRepository.findByEmail(email);
     if (!user) {
       throw new UnauthorizedError("Invalid credentials");
+    }
+    
+    if (user.status === USER_STATUS.PENDING) {
+      throw new UnauthorizedError("Account is pending approval");
+    }
+    if (user.status === USER_STATUS.REJECTED) {
+      throw new UnauthorizedError("Account is rejected");
     }
 
     const isPasswordValid = await this.comparePassword(password, user.password);
@@ -66,7 +81,9 @@ export const authService = {
       throw new UnauthorizedError("Invalid credentials");
     }
 
-    await userRepository.updatePushToken(email, pushToken);
+    if (pushToken) {
+      await userRepository.updatePushToken(email, pushToken);
+    }
 
     return user;
   },
@@ -74,11 +91,12 @@ export const authService = {
   async createSession(
     userId: string,
     email: string,
-    role: string,
+    role: string
   ): Promise<string> {
     await sessionRepository.deleteByUserId(userId);
 
     const token = await this.generateToken({ userId, email, role });
+
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await sessionRepository.create(userId, token, expiresAt);

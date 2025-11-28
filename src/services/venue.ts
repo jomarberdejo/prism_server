@@ -5,11 +5,13 @@ export const venueService = {
     startDate: Date,
     dueDate: Date,
     excludePPAId?: string,
+    venue?: string,
   ) {
     const ppas = await ppaRepository.findOverlappingPPAs(
       startDate,
       dueDate,
       excludePPAId,
+      venue,
     );
 
     const conflictingPPAs = ppas.map((ppa) => ({
@@ -20,7 +22,6 @@ export const venueService = {
       dueDate: ppa.dueDate,
       startTime: ppa.startTime,
       dueTime: ppa.dueTime,
-      location: ppa.location,
       venue: ppa.venue,
       sector: ppa.sector,
       implementingUnit: ppa.implementingUnit,

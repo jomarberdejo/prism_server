@@ -12,7 +12,18 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
+    );
+  },
+
+  async getAllArchivedPPA(c: Context) {
+    const ppas = await ppaService.getAllArchived();
+    return c.json(
+      {
+        success: true,
+        data: { ppas },
+      },
+      StatusCodes.OK
     );
   },
 
@@ -26,7 +37,7 @@ export const ppaHandler = {
         success: true,
         data: { ppa },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -40,7 +51,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -55,7 +66,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -72,6 +83,7 @@ export const ppaHandler = {
       new Date(startDate),
       new Date(dueDate),
       excludePPAId,
+      body.venue
     );
 
     return c.json(
@@ -86,11 +98,12 @@ export const ppaHandler = {
               : `${result.conflictingPPAs.length} PPA(s) scheduled in this date range`,
         },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
   async create(c: Context) {
+    const user = c.get("user");
     const body = await c.req.json();
 
     const requiredFields = [
@@ -101,6 +114,8 @@ export const ppaHandler = {
       "dueDate",
       "startTime",
       "dueTime",
+      "budgetAllocation",
+      "approvedBudget",
       "sectorId",
       "implementingUnitId",
     ];
@@ -113,7 +128,6 @@ export const ppaHandler = {
       task: body.task,
       description: body.description,
       address: body.address,
-      location: body.location,
       venue: body.venue,
       expectedOutput: body.expectedOutput,
       startDate: new Date(body.startDate),
@@ -121,7 +135,10 @@ export const ppaHandler = {
       startTime: new Date(body.startTime),
       dueTime: new Date(body.dueTime),
       sectorId: body.sectorId,
+      budgetAllocation: body.budgetAllocation,
+      approvedBudget: body.approvedBudget,
       implementingUnitId: body.implementingUnitId,
+      userId: user.id,
     });
 
     return c.json(
@@ -130,17 +147,18 @@ export const ppaHandler = {
         message: "PPA created successfully",
         data: { ppa: newPPA },
       },
-      StatusCodes.CREATED,
+      StatusCodes.CREATED
     );
   },
 
   async update(c: Context) {
+    const user = c.get("user");
     const id = c.req.param("id");
     const data = await c.req.json();
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    const updated = await ppaService.updatePPA(id, data);
+    const updated = await ppaService.updatePPA(id, data, user.id);
 
     return c.json(
       {
@@ -148,7 +166,7 @@ export const ppaHandler = {
         message: "PPA rescheduled successfully",
         data: updated,
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -158,14 +176,14 @@ export const ppaHandler = {
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    await ppaService.deletePPA(id);
+    await ppaService.deletePPA(user.id, id);
 
     return c.json(
       {
         success: true,
         message: "PPA deleted successfully",
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 };

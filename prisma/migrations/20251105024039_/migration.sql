@@ -8,6 +8,7 @@ CREATE TABLE `User` (
     `isDepartmentHead` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
+    `pushToken` VARCHAR(191) NULL,
 
     UNIQUE INDEX `User_email_key`(`email`),
     INDEX `User_email_idx`(`email`),
@@ -31,7 +32,7 @@ CREATE TABLE `Session` (
 CREATE TABLE `Sector` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
-    `location` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -53,12 +54,16 @@ CREATE TABLE `PPA` (
     `task` VARCHAR(191) NOT NULL,
     `description` VARCHAR(191) NOT NULL,
     `address` VARCHAR(191) NOT NULL,
+    `location` VARCHAR(191) NULL,
+    `venue` VARCHAR(191) NULL,
     `startDate` DATETIME(3) NOT NULL,
     `dueDate` DATETIME(3) NOT NULL,
     `startTime` DATETIME(3) NOT NULL,
     `dueTime` DATETIME(3) NOT NULL,
+    `expectedOutput` VARCHAR(191) NOT NULL,
     `sectorId` VARCHAR(191) NOT NULL,
     `implementingUnitId` VARCHAR(191) NOT NULL,
+    `lastNotifiedAt` DATETIME(3) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

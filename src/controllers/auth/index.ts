@@ -1,4 +1,8 @@
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import {
+  deleteCookie,
+  getCookie,
+  setCookie,
+} from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
@@ -7,18 +11,13 @@ import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
 
 export const authHandler = {
   async register(c: Context) {
-    const { email, password, name, isDepartmentHead } = await c.req.json();
+    const { email, password, name, isDepartmentHead, role } = await c.req.json();
 
-    if (!email || !password || !name || !isDepartmentHead) {
+    if (!email || !password || !name) {
       throw new BadRequestError("Missing required fields");
     }
 
-    const user = await authService.register(
-      email,
-      password,
-      name,
-      isDepartmentHead,
-    );
+    const user = await authService.register(email, password, name, isDepartmentHead, role);
 
     return c.json(
       {
@@ -26,23 +25,28 @@ export const authHandler = {
         message: "User registered successfully",
         data: { user },
       },
-      StatusCodes.CREATED,
+      StatusCodes.CREATED
     );
   },
 
   async login(c: Context) {
     const { email, password, pushToken } = await c.req.json();
+    const data = await c.req.json();
+
 
     if (!email || !password) {
       throw new BadRequestError("Email and password required");
     }
 
     const user = await authService.login(email, password, pushToken);
+
     const token = await authService.createSession(
       user.id,
       user.email,
-      user.role,
+      user.role
     );
+
+    
 
     setCookie(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
 
@@ -61,7 +65,7 @@ export const authHandler = {
           token,
         },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -79,7 +83,7 @@ export const authHandler = {
         success: true,
         message: "Logged out successfully",
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -90,7 +94,7 @@ export const authHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 };

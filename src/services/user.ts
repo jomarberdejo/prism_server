@@ -1,7 +1,7 @@
 import { VALID_ROLES } from "@/constants/roles";
 import { userRepository } from "@/data/user";
-import { ROLE } from "@/generated/prisma";
 import { NotFoundError, BadRequestError } from "@/utils/error";
+import type { ROLE } from "@prisma/client";
 
 export const userService = {
   async getUserById(id: string) {

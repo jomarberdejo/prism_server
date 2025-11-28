@@ -1,6 +1,6 @@
-import { ROLE } from "@/generated/prisma";
 // import { notificationService } from "@/services/notificationService";
 import { userService } from "@/services/user";
+import type { ROLE } from "@prisma/client";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 

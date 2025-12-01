@@ -105,12 +105,6 @@ export const userRepository = {
           select: {
             id: true,
             name: true,
-            sector: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
           },
         },
       },

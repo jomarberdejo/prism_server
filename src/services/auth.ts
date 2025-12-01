@@ -3,7 +3,7 @@ import {
   UnauthorizedError,
   BadRequestError,
 } from "@/utils/error";
-import type { TokenPayload, UserPayload } from "@/types/auth";
+import type { TokenPayload } from "@/types/auth";
 import { sign, verify } from "hono/jwt";
 import bcrypt from "bcryptjs";
 import { userRepository } from "@/data/user";

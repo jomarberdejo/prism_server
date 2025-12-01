@@ -52,14 +52,6 @@ export const sectorService = {
       throw new NotFoundError("Sector not found");
     }
 
-    const implementingUnits =
-      await implementingUnitRepository.findBySectorId(id);
-    if (implementingUnits.length > 0) {
-      throw new BadRequestError(
-        "Cannot delete sector with existing implementing units",
-      );
-    }
-
     return sectorRepository.delete(id);
   },
 

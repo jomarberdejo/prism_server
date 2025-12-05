@@ -23,10 +23,10 @@ router.patch(
   authMiddleware,
   implementingUnitHandler.update,
 );
-router.get(
-  "/implementing-units/sector/:sectorId",
-  authMiddleware,
-  implementingUnitHandler.getBySectorId,
-);
+// router.get(
+//   "/implementing-units/sector/:sectorId",
+//   authMiddleware,
+//   implementingUnitHandler.getBySectorId,
+// );
 
 export default router;

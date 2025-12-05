@@ -114,8 +114,6 @@ export const ppaHandler = {
       "dueDate",
       "startTime",
       "dueTime",
-      "budgetAllocation",
-      "approvedBudget",
       "sectorId",
       "implementingUnitId",
     ];
@@ -123,6 +121,8 @@ export const ppaHandler = {
     for (const field of requiredFields) {
       if (!body[field]) throw new BadRequestError(`Missing field: ${field}`);
     }
+
+    console.log("Creating PPA with body:", body);
 
     const newPPA = await ppaService.createPPA({
       task: body.task,
@@ -139,6 +139,7 @@ export const ppaHandler = {
       approvedBudget: body.approvedBudget,
       implementingUnitId: body.implementingUnitId,
       userId: user.id,
+      attendees: body.attendees,
     });
 
     return c.json(

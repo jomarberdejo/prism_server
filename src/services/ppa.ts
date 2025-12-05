@@ -1,7 +1,7 @@
 import { ppaRepository } from "@/data/ppa";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/utils/error";
 import { remindReschedulePPA } from "./notificationService";
-import {venueService} from "@/services/venue";
+import { venueService } from "@/services/venue";
 
 export const ppaService = {
   async getPPAById(id: string) {
@@ -11,7 +11,17 @@ export const ppaService = {
   },
 
   async getAllPPAs() {
-    return ppaRepository.findAll();
+    const ppas = await ppaRepository.findAll();
+
+    const mappedPPA = ppas.map((ppa) => ({
+      ...ppa,
+      attendees: ppa.attendees.map((attendee) => ({
+        label: attendee.name,
+        value: attendee.id,
+      })),
+    }));
+
+    return mappedPPA;
   },
 
   async getAllArchived() {
@@ -31,22 +41,35 @@ export const ppaService = {
       throw new BadRequestError("Missing required fields");
     }
 
-    const availability = await venueService.checkLocationAvailability(data.startDate, data.dueDate, undefined, data.venue);
+    const availability = await venueService.checkLocationAvailability(
+      data.startDate,
+      data.dueDate,
+      undefined,
+      data.venue
+    );
     if (!availability.available) {
-      throw new ForbiddenError(`Venue is not available: ${data.venue} is already occupied for the selected dates.`);
+      throw new ForbiddenError(
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+      );
     }
-    
+
     return ppaRepository.create(data);
   },
 
   async updatePPA(ppaId: string, data: any, userId: string) {
-
     console.log("ID", ppaId);
     // const existing = await this.getPPAById(id);
 
-     const availability = await venueService.checkLocationAvailability(data.startDate, data.dueDate, ppaId, data.venue);
+    const availability = await venueService.checkLocationAvailability(
+      data.startDate,
+      data.dueDate,
+      ppaId,
+      data.venue
+    );
     if (!availability.available) {
-      throw new ForbiddenError(`Venue is not available: ${data.venue} is already occupied for the selected dates.`);
+      throw new ForbiddenError(
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+      );
     }
 
     const updatedPPA = await ppaRepository.update(ppaId, data, userId);
@@ -62,7 +85,7 @@ export const ppaService = {
 
   async deletePPA(userId: string, ppaId: string) {
     await this.getPPAById(ppaId);
-    
+
     return ppaRepository.delete(userId, ppaId);
   },
 };

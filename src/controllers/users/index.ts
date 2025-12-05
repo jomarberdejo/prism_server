@@ -13,7 +13,20 @@ export const userHandler = {
         success: true,
         data: { users },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
+    );
+  },
+
+  async getAllHeads(c: Context) {
+    const users = await userService.getAllDepartmentHeads();
+
+
+    return c.json(
+      {
+        success: true,
+        data: users,
+      },
+      StatusCodes.OK
     );
   },
 
@@ -26,7 +39,7 @@ export const userHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -39,7 +52,22 @@ export const userHandler = {
         success: true,
         data: { users },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
+    );
+  },
+
+  async updateProfile(c:Context) {
+    const id = c.req.param("id"); 
+    const body = await c.req.json();
+    
+    const user = await userService.updateProfile(id, body);
+    return c.json(
+      {
+        success: true,
+        message: "Profile updated successfully",
+        data: { user },
+      },
+      StatusCodes.OK
     );
   },
 
@@ -55,7 +83,21 @@ export const userHandler = {
         message: "Role updated successfully",
         data: { user },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
+    );
+  },
+  async updateStatus(c: Context) {
+    const id = c.req.param("id");
+    const { status } = await c.req.json();
+
+    const user = await userService.updateUserStatus(id, status);
+    return c.json(
+      {
+        success: true,
+        message: "Status updated successfully",
+        data: { user },
+      },
+      StatusCodes.OK
     );
   },
 
@@ -68,7 +110,7 @@ export const userHandler = {
         success: true,
         message: "User deleted successfully",
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 };

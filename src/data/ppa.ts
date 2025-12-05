@@ -25,6 +25,12 @@ const ppaSelect: Prisma.PPASelect = {
   delayedReason: true,
   budgetAllocation: true,
   approvedBudget: true,
+  attendees: {
+    select: {
+      id: true,
+      name: true,
+    }
+  },
 } as const;
 
 export const ppaRepository = {
@@ -85,22 +91,56 @@ export const ppaRepository = {
     task: string;
     description: string;
     address: string;
-    expectedOutput: string;
     venue?: string;
+    expectedOutput: string;
     startDate: Date;
     dueDate: Date;
     startTime: Date;
     dueTime: Date;
     sectorId: string;
-    approvedBudget: string;
-    budgetAllocation: string;
+    budgetAllocation?: string;
+    approvedBudget?: string;
     implementingUnitId: string;
     userId: string;
+    attendees?: string[]; 
   }) {
-    return prisma.pPA.create({
-      data,
-      select: ppaSelect,
+    const ppa = await prisma.pPA.create({
+      data: {
+        task: data.task,
+        description: data.description,
+        address: data.address,
+        venue: data.venue,
+        expectedOutput: data.expectedOutput,
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+        startTime: data.startTime,
+        dueTime: data.dueTime,
+        sectorId: data.sectorId,
+        budgetAllocation: data.budgetAllocation,
+        approvedBudget: data.approvedBudget,
+        implementingUnitId: data.implementingUnitId,
+        userId: data.userId,
+        attendees:
+          data.attendees && data.attendees.length > 0
+            ? {
+                connect: data.attendees.map((id) => ({ id })),
+              }
+            : undefined,
+      },
+      include: {
+        attendees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        sector: true,
+        implementingUnit: true,
+      },
     });
+
+    return ppa;
   },
 
   async update(ppaId: string, data: Prisma.PPAUpdateInput, userId?: string) {
@@ -147,7 +187,7 @@ export const ppaRepository = {
 
     return prisma.pPA.update({
       where: { id: ppaId },
-      data: { archivedAt: new Date()},
+      data: { archivedAt: new Date() },
       select: ppaSelect,
     });
   },

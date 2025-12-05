@@ -48,7 +48,7 @@ model User {
   pushToken        String?
   status           USER_STATUS       @default(PENDING)
   ownedPPAs        PPA[]
-
+  attendingPPAs    PPA[]             @relation("PPAAttendees")
   @@index([email])
 }
 
@@ -88,8 +88,8 @@ model PPA {
   dueDate            DateTime
   startTime          DateTime
   dueTime            DateTime
-  budgetAllocation   String
-  approvedBudget     String
+  budgetAllocation   String?
+  approvedBudget     String?
   expectedOutput     String
   actualOutput       String?
   remarks            String?
@@ -100,7 +100,8 @@ model PPA {
   implementingUnit   ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
   status             PPA_STATUS       @default(NOT_STARTED)
   lastNotifiedAt     DateTime?
+  attendees          User[]           @relation("PPAAttendees")
   archivedAt         DateTime?
   userId             String?
-  User               User?            @relation(fields: [userId], references: [id])
+  user               User?            @relation(fields: [userId], references: [id])
 }

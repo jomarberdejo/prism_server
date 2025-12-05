@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import type { Prisma, ROLE } from "@prisma/client";
+import type { Prisma, ROLE, User, USER_STATUS } from "@prisma/client";
 
 const userSelect: Prisma.UserSelect = {
   id: true,
@@ -64,6 +64,14 @@ export const userRepository = {
     });
   },
 
+  async updateProfile(id: string, profileData: User) {
+    return prisma.user.update({
+      where: { id },
+      data: profileData,
+      select: userSelect,
+    });
+  },
+
   async updateRole(id: string, role: ROLE) {
     return prisma.user.update({
       where: { id },
@@ -71,6 +79,16 @@ export const userRepository = {
       select: userSelect,
     });
   },
+
+  async updateStatus(id: string, status: USER_STATUS) {
+    return prisma.user.update({
+      where: { id },
+      data: { status },
+      select: userSelect,
+    });
+  },
+
+  
 
   async updatePushToken(email: string, pushToken: string) {
     return prisma.user.update({

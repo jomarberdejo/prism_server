@@ -16,7 +16,8 @@ const ppaSelect: Prisma.PPASelect = {
   sector: true,
   implementingUnit: true,
   sectorId: true,
-  lastNotifiedAt: true,
+  hourBeforeNotifiedAt: true,
+  dayBeforeNotifiedAt: true,
   archivedAt: true,
   userId: true,
   status: true,
@@ -29,7 +30,7 @@ const ppaSelect: Prisma.PPASelect = {
     select: {
       id: true,
       name: true,
-    }
+    },
   },
 } as const;
 
@@ -63,13 +64,46 @@ export const ppaRepository = {
     });
   },
 
-  async findAllWithNoNotified() {
+  async findAllWithoutDayBeforeNotification() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
+
     return prisma.pPA.findMany({
       where: {
-        lastNotifiedAt: null,
+        dayBeforeNotifiedAt: null,
+        archivedAt: null,
+        startDate: {
+          gte: tomorrow,
+          lt: dayAfterTomorrow,
+        },
       },
       select: ppaSelect,
-      orderBy: { startDate: "desc" },
+      orderBy: { startDate: "asc" },
+    });
+  },
+
+  async findTodayPPAsWithoutHourNotification() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    return prisma.pPA.findMany({
+      where: {
+        hourBeforeNotifiedAt: null,
+        archivedAt: null,
+        startDate: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+      select: ppaSelect,
+      orderBy: { startTime: "asc" },
     });
   },
 
@@ -102,7 +136,7 @@ export const ppaRepository = {
     approvedBudget?: string;
     implementingUnitId: string;
     userId: string;
-    attendees?: string[]; 
+    attendees?: string[];
   }) {
     const ppa = await prisma.pPA.create({
       data: {

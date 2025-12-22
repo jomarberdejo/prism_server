@@ -99,7 +99,8 @@ model PPA {
   sector             Sector           @relation(fields: [sectorId], references: [id])
   implementingUnit   ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
   status             PPA_STATUS       @default(NOT_STARTED)
-  lastNotifiedAt     DateTime?
+  dayBeforeNotifiedAt  DateTime?
+  hourBeforeNotifiedAt DateTime?
   attendees          User[]           @relation("PPAAttendees")
   archivedAt         DateTime?
   userId             String?

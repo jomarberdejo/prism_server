@@ -32,6 +32,11 @@ const ppaSelect: Prisma.PPASelect = {
       name: true,
     },
   },
+  user: {
+    select: {
+      pushToken: true,
+    }
+  }
 } as const;
 
 export const ppaRepository = {

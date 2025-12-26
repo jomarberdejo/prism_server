@@ -77,6 +77,7 @@ export const ppaService = {
     const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
     await remindReschedulePPA({
       ppaId,
+      pushToken: "",
       title,
       body,
     });

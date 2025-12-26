@@ -49,6 +49,7 @@ model User {
   status           USER_STATUS       @default(PENDING)
   ownedPPAs        PPA[]
   attendingPPAs    PPA[]             @relation("PPAAttendees")
+
   @@index([email])
 }
 
@@ -79,30 +80,28 @@ model ImplementingUnit {
 }
 
 model PPA {
-  id                 String           @id @default(cuid())
-  task               String
-  description        String
-  address            String
-  venue              String?
-  startDate          DateTime
-  dueDate            DateTime
-  startTime          DateTime
-  dueTime            DateTime
-  budgetAllocation   String?
-  approvedBudget     String?
-  expectedOutput     String
-  actualOutput       String?
-  remarks            String?
-  delayedReason      String?
-  sectorId           String
-  implementingUnitId String
-  sector             Sector           @relation(fields: [sectorId], references: [id])
-  implementingUnit   ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
-  status             PPA_STATUS       @default(NOT_STARTED)
+  id                   String           @id @default(cuid())
+  task                 String
+  description          String
+  address              String
+  venue                String?
+  startDate            DateTime
+  dueDate              DateTime
+  budgetAllocation     String?
+  approvedBudget       String?
+  expectedOutput       String
+  actualOutput         String?
+  remarks              String?
+  delayedReason        String?
+  sectorId             String
+  implementingUnitId   String
+  sector               Sector           @relation(fields: [sectorId], references: [id])
+  implementingUnit     ImplementingUnit @relation(fields: [implementingUnitId], references: [id])
+  status               PPA_STATUS       @default(NOT_STARTED)
   dayBeforeNotifiedAt  DateTime?
   hourBeforeNotifiedAt DateTime?
-  attendees          User[]           @relation("PPAAttendees")
-  archivedAt         DateTime?
-  userId             String?
-  user               User?            @relation(fields: [userId], references: [id])
+  attendees            User[]           @relation("PPAAttendees")
+  archivedAt           DateTime?
+  userId               String?
+  user                 User?            @relation(fields: [userId], references: [id])
 }

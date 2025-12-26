@@ -11,8 +11,6 @@ const ppaSelect: Prisma.PPASelect = {
   expectedOutput: true,
   startDate: true,
   dueDate: true,
-  startTime: true,
-  dueTime: true,
   sector: true,
   implementingUnit: true,
   sectorId: true,
@@ -108,7 +106,7 @@ export const ppaRepository = {
         },
       },
       select: ppaSelect,
-      orderBy: { startTime: "asc" },
+      orderBy: { startDate: "asc" },
     });
   },
 
@@ -134,8 +132,6 @@ export const ppaRepository = {
     expectedOutput: string;
     startDate: Date;
     dueDate: Date;
-    startTime: Date;
-    dueTime: Date;
     sectorId: string;
     budgetAllocation?: string;
     approvedBudget?: string;
@@ -152,8 +148,6 @@ export const ppaRepository = {
         expectedOutput: data.expectedOutput,
         startDate: data.startDate,
         dueDate: data.dueDate,
-        startTime: data.startTime,
-        dueTime: data.dueTime,
         sectorId: data.sectorId,
         budgetAllocation: data.budgetAllocation,
         approvedBudget: data.approvedBudget,

@@ -27,8 +27,6 @@ const implementingUnitSelect: Prisma.ImplementingUnitSelect = {
       address: true,
       startDate: true,
       dueDate: true,
-      startTime: true,
-      dueTime: true,
     },
   },
 } as const;

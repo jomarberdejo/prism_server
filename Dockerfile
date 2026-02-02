@@ -1,68 +1,27 @@
-# syntax=docker/dockerfile:1
+FROM node:20-alpine AS builder
 
-ARG NODE_VERSION=22.20.0
+WORKDIR /app
 
-################################################################################
-# Base stage
-FROM node:${NODE_VERSION}-alpine as base
+COPY package*.json ./
+COPY prisma ./prisma
 
-WORKDIR /usr/src/app
-
-################################################################################
-# Dependencies stage
-FROM base as deps
-
-RUN --mount=type=bind,source=package.json,target=package.json \
-    --mount=type=bind,source=package-lock.json,target=package-lock.json \
-    --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
-
-################################################################################
-# Build stage
-FROM base as build
-
-# Install all dependencies (including devDependencies)
-RUN --mount=type=bind,source=package.json,target=package.json \
-    --mount=type=bind,source=package-lock.json,target=package-lock.json \
-    --mount=type=cache,target=/root/.npm \
-    npm ci
-
-# Copy source files
-COPY . .
-
-# Generate Prisma Client
+RUN npm install
 RUN npx prisma generate
 
-# Build TypeScript
+COPY . .
 RUN npm run build
 
-################################################################################
-# Final stage
-FROM base as final
+FROM node:20-alpine
+
+WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Run as non-root user
-USER node
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY package*.json ./
 
-# Copy package files
-COPY package.json .
-COPY package-lock.json .
+EXPOSE 4000
 
-# Copy production dependencies
-COPY --from=deps /usr/src/app/node_modules ./node_modules
-
-# Copy built application
-COPY --from=build /usr/src/app/dist ./dist
-
-# Copy Prisma files (CRITICAL for migrations)
-COPY --chown=node:node prisma ./prisma
-
-# Copy Prisma Client from build stage
-COPY --from=build /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /usr/src/app/node_modules/@prisma ./node_modules/@prisma
-
-EXPOSE 3000
-
-# Run migrations and start app
-CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]
+CMD ["node", "dist/index.js"]

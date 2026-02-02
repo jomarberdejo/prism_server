@@ -23,7 +23,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
   }
 
   const session = await sessionRepository.findByToken(token);
-  console.log(session);
+
   if (!session || new Date() > session.expiresAt) {
     throw new UnauthorizedError("Session expired or invalid");
   }
@@ -35,7 +35,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
   const user: UserPayload = {
     id: payload.userId,
-    email: payload.email,
+    username: payload.username,
     role: payload.role,
   };
 
@@ -47,7 +47,6 @@ export const requireRole = (allowedRoles: string[]) => {
   return async (c: Context, next: Next) => {
     const user = c.get("user") as UserPayload | undefined;
 
-    console.log(user);
 
     if (!user || !allowedRoles.includes(user.role)) {
       throw new ForbiddenError("Insufficient permissions");

@@ -23,6 +23,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // src/index.ts
+var import_config = require("dotenv/config");
 var import_node_server = require("@hono/node-server");
 var import_hono7 = require("hono");
 
@@ -37,6 +38,16 @@ var VALID_ROLES = [
   "VIEWER"
 ];
 
+// src/constants/status.ts
+var VALID_STATUSES = [
+  "PENDING",
+  "ACTIVE",
+  "REJECTED"
+];
+
+// src/env.ts
+var import_zod = require("zod");
+
 // src/constants/env.ts
 var NODE_ENV = {
   Local: "local",
@@ -45,17 +56,16 @@ var NODE_ENV = {
 };
 
 // src/env.ts
-var import_zod = require("zod");
 var envSchema = import_zod.z.object({
+  DATABASE_URL: import_zod.z.string(),
   NODE_ENV: import_zod.z.nativeEnum(NODE_ENV).default(NODE_ENV.Local),
   APP_PORT: import_zod.z.coerce.number().default(3e3),
-  DATABASE_URL: import_zod.z.string().optional(),
-  JWT_SECRET: import_zod.z.string().optional()
+  JWT_SECRET: import_zod.z.string()
 });
 var envConfig = envSchema.parse({
+  DATABASE_URL: process.env.DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
   APP_PORT: process.env.APP_PORT,
-  DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: process.env.JWT_SECRET
 });
 
@@ -71,16 +81,24 @@ var prisma_default = prisma;
 var userSelect = {
   id: true,
   email: true,
+  username: true,
   name: true,
   role: true,
   createdAt: true,
   isDepartmentHead: true,
-  pushToken: true
+  pushToken: true,
+  status: true,
+  password: true
 };
 var userRepository = {
   async findByEmail(email) {
     return prisma_default.user.findUnique({
       where: { email }
+    });
+  },
+  async findByUsername(username) {
+    return prisma_default.user.findUnique({
+      where: { username }
     });
   },
   async findById(id) {
@@ -89,9 +107,16 @@ var userRepository = {
       select: userSelect
     });
   },
-  async create(email, hashedPassword, name, isDepartmentHead, role) {
+  async create(hashedPassword, name, isDepartmentHead, role, username, email) {
     return prisma_default.user.create({
-      data: { email, password: hashedPassword, name, isDepartmentHead, role },
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        isDepartmentHead,
+        role,
+        username
+      },
       select: userSelect
     });
   },
@@ -117,6 +142,13 @@ var userRepository = {
       select: userSelect
     });
   },
+  async updateProfile(id, profileData) {
+    return prisma_default.user.update({
+      where: { id },
+      data: profileData,
+      select: userSelect
+    });
+  },
   async updateRole(id, role) {
     return prisma_default.user.update({
       where: { id },
@@ -124,9 +156,30 @@ var userRepository = {
       select: userSelect
     });
   },
-  async updatePushToken(email, pushToken) {
+  async updateStatus(id, status) {
     return prisma_default.user.update({
-      where: { email },
+      where: { id },
+      data: { status },
+      select: userSelect
+    });
+  },
+  async updatePassword(userId, hashedPassword) {
+    return await prisma_default.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true
+      }
+    });
+  },
+  async updatePushToken(username, pushToken) {
+    return prisma_default.user.update({
+      where: { username },
       data: { pushToken },
       select: userSelect
     });
@@ -153,13 +206,7 @@ var userRepository = {
         departmentHead: {
           select: {
             id: true,
-            name: true,
-            sector: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
+            name: true
           }
         }
       }
@@ -252,109 +299,7 @@ function makeError(error) {
 }
 
 // src/services/user.ts
-var userService = {
-  async getUserById(id) {
-    const user = await userRepository.findById(id);
-    if (!user) {
-      throw new NotFoundError("User not found");
-    }
-    return user;
-  },
-  async getAllUsers() {
-    return userRepository.findAll();
-  },
-  async getUsersByRole(role) {
-    if (!VALID_ROLES.includes(role)) {
-      throw new BadRequestError("Invalid role");
-    }
-    return userRepository.findByRole(role);
-  },
-  async updateUserRole(userId, role) {
-    if (!VALID_ROLES.includes(role)) {
-      throw new BadRequestError("Invalid role");
-    }
-    const user = await this.getUserById(userId);
-    return userRepository.updateRole(userId, role);
-  },
-  async deleteUser(id) {
-    await this.getUserById(id);
-    return userRepository.delete(id);
-  }
-};
-
-// src/controllers/users/index.ts
-var import_http_status_codes2 = require("http-status-codes");
-var userHandler = {
-  async getAll(c) {
-    const users = await userService.getAllUsers();
-    return c.json(
-      {
-        success: true,
-        data: { users }
-      },
-      import_http_status_codes2.StatusCodes.OK
-    );
-  },
-  async getById(c) {
-    const id = c.req.param("id");
-    const user = await userService.getUserById(id);
-    return c.json(
-      {
-        success: true,
-        data: { user }
-      },
-      import_http_status_codes2.StatusCodes.OK
-    );
-  },
-  async getByRole(c) {
-    const role = c.req.param("role");
-    const users = await userService.getUsersByRole(role);
-    return c.json(
-      {
-        success: true,
-        data: { users }
-      },
-      import_http_status_codes2.StatusCodes.OK
-    );
-  },
-  async updateRole(c) {
-    const id = c.req.param("id");
-    const { role } = await c.req.json();
-    const user = await userService.updateUserRole(id, role);
-    return c.json(
-      {
-        success: true,
-        message: "Role updated successfully",
-        data: { user }
-      },
-      import_http_status_codes2.StatusCodes.OK
-    );
-  },
-  async delete(c) {
-    const id = c.req.param("id");
-    await userService.deleteUser(id);
-    return c.json(
-      {
-        success: true,
-        message: "User deleted successfully"
-      },
-      import_http_status_codes2.StatusCodes.OK
-    );
-  }
-};
-
-// src/controllers/users/routes.ts
-var router = new import_hono.Hono();
-router.get("/users", userHandler.getAll);
-router.put("/users/:id", userHandler.updateRole);
-var routes_default = router;
-
-// src/controllers/auth/routes.ts
-var import_hono2 = require("hono");
-
-// src/controllers/auth/index.ts
-var import_cookie = require("hono/cookie");
-var import_http_status_codes3 = require("http-status-codes");
+var import_client3 = require("@prisma/client");
 
 // src/services/auth.ts
 var import_jwt = require("hono/jwt");
@@ -388,6 +333,7 @@ var sessionRepository = {
 };
 
 // src/services/auth.ts
+var import_client2 = require("@prisma/client");
 var authService = {
   generateToken(payload) {
     return (0, import_jwt.sign)(payload, envConfig.JWT_SECRET, "HS256");
@@ -397,7 +343,7 @@ var authService = {
       const payload = await (0, import_jwt.verify)(token, envConfig.JWT_SECRET, "HS256");
       return {
         userId: payload.userId,
-        email: payload.email,
+        username: payload.username,
         role: payload.role
       };
     } catch {
@@ -410,32 +356,53 @@ var authService = {
   async comparePassword(password, hash) {
     return import_bcryptjs.default.compare(password, hash);
   },
-  async register(email, password, name, isDepartmentHead, role) {
-    const existingUser = await userRepository.findByEmail(email);
+  async register(password, name, username, isDepartmentHead, role, email) {
+    if (email) {
+      const existingUser2 = await userRepository.findByEmail(email);
+      if (existingUser2) {
+        throw new ConflictError("Email already in use");
+      }
+    }
+    const existingUser = await userRepository.findByUsername(username);
     if (existingUser) {
-      throw new ConflictError("Email already in use");
+      throw new ConflictError("Username already in use");
     }
     if (password.length < 6) {
       throw new BadRequestError("Password must be at least 6 characters");
     }
     const hashedPassword = await this.hashPassword(password);
-    return userRepository.create(email, hashedPassword, name, isDepartmentHead, role);
+    return userRepository.create(
+      hashedPassword,
+      name,
+      isDepartmentHead,
+      role,
+      username,
+      email
+    );
   },
-  async login(email, password, pushToken) {
-    const user = await userRepository.findByEmail(email);
+  async login(username, password, pushToken) {
+    const user = await userRepository.findByUsername(username);
     if (!user) {
       throw new UnauthorizedError("Invalid credentials");
+    }
+    if (user.status === import_client2.USER_STATUS.PENDING) {
+      throw new UnauthorizedError("Account is pending approval");
+    }
+    if (user.status === import_client2.USER_STATUS.REJECTED) {
+      throw new UnauthorizedError("Account is rejected");
     }
     const isPasswordValid = await this.comparePassword(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedError("Invalid credentials");
     }
-    await userRepository.updatePushToken(email, pushToken);
+    if (pushToken) {
+      await userRepository.updatePushToken(username, pushToken);
+    }
     return user;
   },
-  async createSession(userId, email, role) {
+  async createSession(userId, username, role) {
     await sessionRepository.deleteByUserId(userId);
-    const token = await this.generateToken({ userId, email, role });
+    const token = await this.generateToken({ userId, username, role });
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3);
     await sessionRepository.create(userId, token, expiresAt);
     return token;
@@ -444,6 +411,214 @@ var authService = {
     return sessionRepository.deleteByToken(token);
   }
 };
+
+// src/services/user.ts
+var userService = {
+  async getUserById(id) {
+    const user = await userRepository.findById(id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    return user;
+  },
+  async getAllUsers() {
+    return userRepository.findAll();
+  },
+  async getUsersByRole(role) {
+    if (!VALID_ROLES.includes(role)) {
+      throw new BadRequestError("Invalid role");
+    }
+    return userRepository.findByRole(role);
+  },
+  async updateProfile(userId, profileData) {
+    return userRepository.updateProfile(userId, profileData);
+  },
+  async updatePassword(userId, currentPassword, newPassword) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    const isValidPassword = await authService.comparePassword(
+      currentPassword,
+      user.password
+    );
+    if (!isValidPassword) {
+      throw new BadRequestError("Current password is incorrect");
+    }
+    if (newPassword.length < 6) {
+      throw new BadRequestError("New password must be at least 6 characters");
+    }
+    const isSamePassword = await authService.comparePassword(
+      newPassword,
+      user.password
+    );
+    if (isSamePassword) {
+      throw new BadRequestError(
+        "New password must be different from current password"
+      );
+    }
+    const hashedPassword = await authService.hashPassword(newPassword);
+    await userRepository.updatePassword(userId, hashedPassword);
+  },
+  async updateUserRole(userId, role) {
+    if (!VALID_ROLES.includes(role)) {
+      throw new BadRequestError("Invalid role");
+    }
+    const user = await this.getUserById(userId);
+    return userRepository.updateRole(userId, role);
+  },
+  async updateUserStatus(userId, status) {
+    if (!VALID_STATUSES.includes(status)) {
+      throw new BadRequestError("Invalid status");
+    }
+    const user = await this.getUserById(userId);
+    return userRepository.updateStatus(userId, status);
+  },
+  async updateDepartmentHeadStatus(userId, isDepartmentHead) {
+    const user = await this.getUserById(userId);
+    return userRepository.updateDepartmentHeadStatus(userId, isDepartmentHead);
+  },
+  async deleteUser(id) {
+    await this.getUserById(id);
+    return userRepository.delete(id);
+  },
+  async getAllDepartmentHeads() {
+    const users = await userRepository.getDepartmentHeads();
+    const mappedUsers = users.map((user) => ({
+      label: user.name,
+      value: user.id
+    }));
+    return mappedUsers;
+  }
+};
+
+// src/controllers/users/index.ts
+var import_http_status_codes2 = require("http-status-codes");
+var userHandler = {
+  async getAll(c) {
+    const users = await userService.getAllUsers();
+    return c.json(
+      {
+        success: true,
+        data: { users }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async getAllHeads(c) {
+    const users = await userService.getAllDepartmentHeads();
+    return c.json(
+      {
+        success: true,
+        data: users
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async getById(c) {
+    const id = c.req.param("id");
+    const user = await userService.getUserById(id);
+    return c.json(
+      {
+        success: true,
+        data: { user }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async getByRole(c) {
+    const role = c.req.param("role");
+    const users = await userService.getUsersByRole(role);
+    return c.json(
+      {
+        success: true,
+        data: { users }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async updateProfile(c) {
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    const user = await userService.updateProfile(id, body);
+    return c.json(
+      {
+        success: true,
+        message: "Profile updated successfully",
+        data: { user }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async updateRole(c) {
+    const id = c.req.param("id");
+    const { role } = await c.req.json();
+    const user = await userService.updateUserRole(id, role);
+    return c.json(
+      {
+        success: true,
+        message: "Role updated successfully",
+        data: { user }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async updateStatus(c) {
+    const id = c.req.param("id");
+    const { status } = await c.req.json();
+    const user = await userService.updateUserStatus(id, status);
+    return c.json(
+      {
+        success: true,
+        message: "Status updated successfully",
+        data: { user }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async updateDepartmentHeadStatus(c) {
+    const id = c.req.param("id");
+    const { isDepartmentHead } = await c.req.json();
+    const user = await userService.updateDepartmentHeadStatus(
+      id,
+      isDepartmentHead
+    );
+    return c.json(
+      {
+        success: true,
+        message: "Department head status updated successfully",
+        data: { user }
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async updatePassword(c) {
+    const { currentPassword, newPassword } = await c.req.json();
+    const user = c.get("user");
+    await userService.updatePassword(user.id, currentPassword, newPassword);
+    return c.json(
+      {
+        success: true,
+        message: "Password updated successfully"
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  },
+  async delete(c) {
+    const id = c.req.param("id");
+    await userService.deleteUser(id);
+    return c.json(
+      {
+        success: true,
+        message: "User deleted successfully"
+      },
+      import_http_status_codes2.StatusCodes.OK
+    );
+  }
+};
+
+// src/middlewares/auth.ts
+var import_cookie = require("hono/cookie");
 
 // src/constants/cookies.ts
 var COOKIE_NAMES = {
@@ -458,20 +633,54 @@ var COOKIE_CONFIG = {
 };
 var JWT_SECRET = envConfig.JWT_SECRET;
 
+// src/middlewares/auth.ts
+var authMiddleware = async (c, next) => {
+  const token = (0, import_cookie.getCookie)(c, COOKIE_NAMES.accessToken);
+  if (!token) {
+    throw new UnauthorizedError("No token provided");
+  }
+  const session = await sessionRepository.findByToken(token);
+  if (!session || /* @__PURE__ */ new Date() > session.expiresAt) {
+    throw new UnauthorizedError("Session expired or invalid");
+  }
+  const payload = await authService.verifyToken(token);
+  if (!payload) {
+    throw new UnauthorizedError("Invalid token");
+  }
+  const user = {
+    id: payload.userId,
+    username: payload.username,
+    role: payload.role
+  };
+  c.set("user", user);
+  await next();
+};
+
+// src/controllers/users/routes.ts
+var router = new import_hono.Hono();
+router.get("/users", userHandler.getAll);
+router.get("/users/heads", userHandler.getAllHeads);
+router.patch("/users/change-password", authMiddleware, userHandler.updatePassword);
+router.patch("/users/:id", userHandler.updateProfile);
+router.patch("/users/:id/role", userHandler.updateRole);
+router.patch("/users/:id/status", userHandler.updateStatus);
+router.patch("/users/:id/department-head", userHandler.updateDepartmentHeadStatus);
+router.delete("/users/:id", userHandler.delete);
+var routes_default = router;
+
+// src/controllers/auth/routes.ts
+var import_hono2 = require("hono");
+
 // src/controllers/auth/index.ts
+var import_cookie2 = require("hono/cookie");
+var import_http_status_codes3 = require("http-status-codes");
 var authHandler = {
   async register(c) {
-    const { email, password, name, isDepartmentHead, role } = await c.req.json();
-    if (!email || !password || !name) {
+    const { email, password, name, username, isDepartmentHead, role } = await c.req.json();
+    if (!password || !name || !username) {
       throw new BadRequestError("Missing required fields");
     }
-    const user = await authService.register(
-      email,
-      password,
-      name,
-      isDepartmentHead,
-      role
-    );
+    const user = await authService.register(password, name, username, isDepartmentHead, role, email);
     return c.json(
       {
         success: true,
@@ -482,17 +691,17 @@ var authHandler = {
     );
   },
   async login(c) {
-    const { email, password, pushToken } = await c.req.json();
-    if (!email || !password) {
-      throw new BadRequestError("Email and password required");
+    const { username, password, pushToken } = await c.req.json();
+    if (!username || !password) {
+      throw new BadRequestError("Username and password required");
     }
-    const user = await authService.login(email, password, pushToken);
+    const user = await authService.login(username, password, pushToken);
     const token = await authService.createSession(
       user.id,
-      user.email,
+      user.username,
       user.role
     );
-    (0, import_cookie.setCookie)(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
+    (0, import_cookie2.setCookie)(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
     return c.json(
       {
         success: true,
@@ -501,6 +710,7 @@ var authHandler = {
           user: {
             id: user.id,
             email: user.email,
+            username: user.username,
             name: user.name,
             role: user.role,
             isDepartmentHead: user.isDepartmentHead
@@ -512,11 +722,11 @@ var authHandler = {
     );
   },
   async logout(c) {
-    const token = (0, import_cookie.getCookie)(c, COOKIE_NAMES.accessToken);
+    const token = (0, import_cookie2.getCookie)(c, COOKIE_NAMES.accessToken);
     if (token) {
       await authService.destroySession(token);
     }
-    (0, import_cookie.deleteCookie)(c, COOKIE_NAMES.accessToken, COOKIE_CONFIG);
+    (0, import_cookie2.deleteCookie)(c, COOKIE_NAMES.accessToken, COOKIE_CONFIG);
     return c.json(
       {
         success: true,
@@ -551,22 +761,40 @@ var import_hono3 = require("hono");
 var import_http_status_codes4 = require("http-status-codes");
 
 // src/data/ppa.ts
+var import_client4 = require("@prisma/client");
 var ppaSelect = {
   id: true,
   task: true,
   description: true,
   address: true,
-  location: true,
   venue: true,
   expectedOutput: true,
   startDate: true,
   dueDate: true,
-  startTime: true,
-  dueTime: true,
   sector: true,
   implementingUnit: true,
   sectorId: true,
-  lastNotifiedAt: true
+  hourBeforeNotifiedAt: true,
+  dayBeforeNotifiedAt: true,
+  archivedAt: true,
+  userId: true,
+  status: true,
+  remarks: true,
+  actualOutput: true,
+  delayedReason: true,
+  budgetAllocation: true,
+  approvedBudget: true,
+  attendees: {
+    select: {
+      id: true,
+      name: true
+    }
+  },
+  user: {
+    select: {
+      pushToken: true
+    }
+  }
 };
 var ppaRepository = {
   async findById(id) {
@@ -578,16 +806,58 @@ var ppaRepository = {
   async findAll() {
     return prisma_default.pPA.findMany({
       select: ppaSelect,
+      orderBy: { startDate: "asc" },
+      where: {
+        archivedAt: null
+      }
+    });
+  },
+  async findAllArchived() {
+    return prisma_default.pPA.findMany({
+      select: ppaSelect,
+      orderBy: { startDate: "asc" },
+      where: {
+        archivedAt: {
+          not: null
+        }
+      }
+    });
+  },
+  async findAllWithoutDayBeforeNotification() {
+    const tomorrow = /* @__PURE__ */ new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const dayAfterTomorrow = new Date(tomorrow);
+    dayAfterTomorrow.setDate(tomorrow.getDate() + 1);
+    return prisma_default.pPA.findMany({
+      where: {
+        dayBeforeNotifiedAt: null,
+        archivedAt: null,
+        startDate: {
+          gte: tomorrow,
+          lt: dayAfterTomorrow
+        }
+      },
+      select: ppaSelect,
       orderBy: { startDate: "asc" }
     });
   },
-  async findAllWithNoNotified() {
+  async findTodayPPAsWithoutHourNotification() {
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
     return prisma_default.pPA.findMany({
       where: {
-        lastNotifiedAt: null
+        hourBeforeNotifiedAt: null,
+        archivedAt: null,
+        startDate: {
+          gte: today,
+          lt: tomorrow
+        }
       },
       select: ppaSelect,
-      orderBy: { startDate: "desc" }
+      orderBy: { startDate: "asc" }
     });
   },
   async findBySector(sectorId) {
@@ -603,21 +873,78 @@ var ppaRepository = {
     });
   },
   async create(data) {
-    return prisma_default.pPA.create({
-      data,
-      select: ppaSelect
+    const ppa = await prisma_default.pPA.create({
+      data: {
+        task: data.task,
+        description: data.description,
+        address: data.address,
+        venue: data.venue,
+        expectedOutput: data.expectedOutput,
+        startDate: data.startDate,
+        dueDate: data.dueDate,
+        sectorId: data.sectorId,
+        budgetAllocation: data.budgetAllocation,
+        approvedBudget: data.approvedBudget,
+        implementingUnitId: data.implementingUnitId,
+        userId: data.userId,
+        attendees: data.attendees && data.attendees.length > 0 ? {
+          connect: data.attendees.map((id) => ({ id }))
+        } : void 0
+      },
+      include: {
+        attendees: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        sector: true,
+        implementingUnit: true
+      }
     });
+    return ppa;
   },
-  async update(id, data) {
+  async update(ppaId, data, userId) {
+    const ppa = await prisma_default.pPA.findFirst({
+      where: {
+        id: ppaId,
+        userId
+      },
+      select: {
+        id: true
+      }
+    });
+    if (!ppa) {
+      throw new ForbiddenError(
+        "You are not authorized to perform this action."
+      );
+    }
     return prisma_default.pPA.update({
-      where: { id },
+      where: {
+        id: ppaId
+      },
       data,
       select: ppaSelect
     });
   },
-  async delete(id) {
-    return prisma_default.pPA.delete({
-      where: { id }
+  async delete(userId, ppaId) {
+    const ppa = await prisma_default.pPA.findFirst({
+      where: {
+        id: ppaId,
+        userId
+      },
+      select: { id: true }
+    });
+    if (!ppa) {
+      throw new ForbiddenError(
+        "You are not authorized to perform this action."
+      );
+    }
+    return prisma_default.pPA.update({
+      where: { id: ppaId },
+      data: { archivedAt: /* @__PURE__ */ new Date() },
+      select: ppaSelect
     });
   },
   // async findUpcomingPPAs() {
@@ -659,7 +986,7 @@ var ppaRepository = {
   //     },
   //   });
   // },
-  async findOverlappingPPAs(startDate, dueDate, excludePPAId) {
+  async findOverlappingPPAs(startDate, dueDate, excludePPAId, venue) {
     const start = new Date(startDate);
     const end = new Date(dueDate);
     start.setHours(0, 0, 0, 0);
@@ -670,7 +997,10 @@ var ppaRepository = {
       AND: [
         { startDate: { lte: end } },
         { dueDate: { gte: start } },
-        { dueDate: { gt: today } }
+        { dueDate: { gt: today } },
+        {
+          venue
+        }
       ]
     };
     if (excludePPAId) {
@@ -688,149 +1018,332 @@ var ppaRepository = {
 };
 
 // src/services/notificationService.ts
+var import_firebase_admin = __toESM(require("firebase-admin"));
 var import_node_cron = __toESM(require("node-cron"));
-var import_expo_server_sdk = require("expo-server-sdk");
 var import_date_fns = require("date-fns");
 
 // src/utils/dates.ts
-var formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  });
+var import_moment_timezone = __toESM(require("moment-timezone"));
+var DEFAULT_TIMEZONE = "Asia/Manila";
+var DateTimeUtil = class {
+  timezone;
+  constructor(timezone = DEFAULT_TIMEZONE) {
+    this.timezone = timezone;
+  }
+  /**
+   * Parse a date stored in local Manila time
+   */
+  parse(date) {
+    return import_moment_timezone.default.tz(date, this.timezone);
+  }
+  /**
+   * Format date as "Month Day, Year" (e.g., "December 26, 2025")
+   */
+  formatDate(date) {
+    return this.parse(date).format("MMMM D, YYYY");
+  }
+  formatTime(date) {
+    return this.parse(date).format("h:mm A");
+  }
+  /**
+   * Format date with time as "Month Day, Year at HH:MM AM/PM"
+   */
+  formatDateTime(date) {
+    return this.parse(date).format("MMMM D, YYYY [at] h:mm A");
+  }
+  /**
+   * Format date as short format "MMM D, YYYY" (e.g., "Dec 26, 2025")
+   */
+  formatDateShort(date) {
+    return this.parse(date).format("MMM D, YYYY");
+  }
+  /**
+   * Get relative time (e.g., "2 days ago", "in 3 hours")
+   */
+  fromNow(date) {
+    return this.parse(date).fromNow();
+  }
+  /**
+   * Get current date/time in Manila timezone
+   */
+  now() {
+    return import_moment_timezone.default.tz(this.timezone);
+  }
+  /**
+   * Custom format with any moment format string
+   */
+  format(date, formatString) {
+    return this.parse(date).format(formatString);
+  }
 };
-var formatTime = (timeString) => {
-  return new Date(timeString).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+var dateTime = new DateTimeUtil();
+
+// service-account.json
+var service_account_default = {
+  type: "service_account",
+  project_id: "prism-ae194",
+  private_key_id: "b2e8dc14da4d352e623faa69da31a1fe3ce78ee7",
+  private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDZ+q36BUt4j+SR\nINRXSktKGOnJ9CXxb5FF4dmNtp2LJ2560swxzreo69xeNOp5Ovl5TzGd38KAxg2E\nIgsM54hIdmkJCKzLkmJwhJIHtx626T0/egsoJolEKS+270mddAFygnfnrK2F6hN4\n2cHrs0uNiR0vsp9Y7giXO2lv5Y420y3aFTVv7DyR3BnBIejWeltM3DL2TgtbcJ97\nJbSaXQNOh+FAoTqLynGAWBdzKUVzxs/XQ8QBRNh1nQHaBg72x1UvEaz1L+mc7OGh\njJLLin7B+4zz7p0suTAsh1FR8ZiT56ykCLh0s5r8gRk+I8t4VF0nSmoyFNcRzlop\nG+6BGgwDAgMBAAECggEAIXBg82OP4gKDosvcJzlAzDDUNI9H/tNfACRsdl6W/nuM\naY/K6V0iiZRdLZ/afxclTDnHjRuAFWHMkwI8mxHYXfK5nDwrczM/91jZpLtacomH\nRCSZxOKx2LX6GYsjH4y7PXDMVMsFokR4EOhUOlnlSOTJiGv+IUCq1WBfhV3mxNFf\nYrt5txz6VtMp4+Z/EVOHdXGQxWIPxlvCTjPuIZZjeuk7ShjDG0NUdvlRrfkaZbiP\nRnIBkOhp+AnwxIlO95ZxTvmAOI6ABzJfasW/QCR5T/JiI0wbZDcy/UbPROE789k0\nw83mFF92VKGy7k0MShQAYkp7cwebxk3pvPVu5uxNIQKBgQD5ay6PdoLKR8KaLJ8B\nhauVPx/bgjtfcvUTkYOdSaWu0/QuyGe1G3gGFDnBrQf/7fhVY43BW5If/jheElvR\n3spziKjZnxAXZFGFI+ZlztxlQwOdBBbJ/7a9+QVQo6FkakHjm04jgFG/ywQ3NAVA\ndDLVQAF32JPzwWeT7YkuYTJocwKBgQDfux/ySjcEesOkqV959IE+RE2UPoTwQg67\ntVNQ4htqjEOrUrLqtLJoCVWvKOqTSs8fnZl5YGVZXcD7t9vamHt/D/OP1OV8mqXE\nxsi+8hx/QPbqo+Ex4fzsf37dgcg1UsrV+B5KcSOL5edDU5Tj3xu9KlMqAgkP+p+X\nKajfiY46MQKBgBdxi57QdNquhAwZxZhPCCGvHT90rj/6fi6orsZJ9djI81qyW40a\nV926aPNbYDUeGQltohValhGLw6CT+S1w03aokbZizRBlzYPGLBHFr9GUyvInQD0c\nXADfNzCtMK5PjoHmRyHvHb/5RRwrN5MnWN/SdFDfeoie1S2CVjKV0DchAoGBALli\nNHZvSGdN0g7+yT4ke3M85YuQwlbSZaLj/MVolY8T6n5raBVS5QGPupAJN1YVBssL\nq8AHP/Ns3Bu3nVTkRHBkp0zm+8Dj47fJf025ECPhkLecU10iBJFyk4y3nU2R7MCf\nd3n3hZzGQ3pmJ1kp5bI4//Au/5Nd+B8pReTz9gYBAoGAYveZFIt/OJX++8Chgyab\nomEU3EpHTAYT5rZ4+ofaZw4TeUELY/J+PeihgkaIkmrlHsoA0yIbv9raRqFyyViT\nQjjJYe+AwBWgtiqVEdVffo/RuzmjukrThHdOFXwgkQzRk5xIZgV6/ISbstM03gSf\nfWn9RHGCMCEP0ArJ1IiBzGs=\n-----END PRIVATE KEY-----\n",
+  client_email: "firebase-adminsdk-fbsvc@prism-ae194.iam.gserviceaccount.com",
+  client_id: "109471655014926653006",
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40prism-ae194.iam.gserviceaccount.com",
+  universe_domain: "googleapis.com"
 };
 
 // src/services/notificationService.ts
-var expo = new import_expo_server_sdk.Expo();
+if (!import_firebase_admin.default.apps.length) {
+  try {
+    import_firebase_admin.default.initializeApp({
+      credential: import_firebase_admin.default.credential.cert(service_account_default)
+    });
+    console.log("\u2705 Firebase Admin initialized");
+  } catch (error) {
+    console.error("\u274C Firebase Admin initialization error:", error);
+  }
+}
 var sentReminders = /* @__PURE__ */ new Set();
-async function sendPushNotification({
-  id,
-  pushToken,
+function detectPlatform(pushToken) {
+  if (!pushToken) return null;
+  if (/^[0-9a-f]{64}$/i.test(pushToken)) return "apns";
+  return "fcm";
+}
+async function sendFCMNotification({
+  fcmToken,
   title,
-  body
+  body,
+  data = {}
 }) {
-  if (!import_expo_server_sdk.Expo.isExpoPushToken(pushToken)) {
-    console.warn(`\u274C Invalid Expo push token: ${pushToken}`);
+  const message = {
+    token: fcmToken,
+    notification: { title, body },
+    data,
+    android: {
+      priority: "high",
+      notification: {
+        channelId: "default",
+        sound: "default",
+        priority: "high"
+      }
+    }
+  };
+  try {
+    const response = await import_firebase_admin.default.messaging().send(message);
+    console.log("\u2705 FCM notification sent:", response);
+    return true;
+  } catch (error) {
+    console.error("\u274C Error sending FCM notification:", error);
     return false;
   }
+}
+async function sendAPNsNotification({
+  apnsToken,
+  title,
+  body,
+  data = {}
+}) {
+  const message = {
+    token: apnsToken,
+    notification: { title, body },
+    data,
+    apns: {
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: "default",
+          badge: 1
+        }
+      }
+    }
+  };
   try {
-    const tickets = await expo.sendPushNotificationsAsync([
-      {
-        to: pushToken,
-        sound: "default",
+    const response = await import_firebase_admin.default.messaging().send(message);
+    console.log("\u2705 APNs notification sent:", response);
+    return true;
+  } catch (error) {
+    console.error("\u274C Error sending APNs notification:", error);
+    return false;
+  }
+}
+async function sendPushNotification({
+  ppaId,
+  pushToken,
+  title,
+  body,
+  notificationType
+}) {
+  if (!pushToken) {
+    console.warn(`\u274C No push token provided for PPA: ${ppaId}`);
+    return false;
+  }
+  const platform = detectPlatform(pushToken);
+  if (!platform) {
+    console.warn(
+      `\u274C Could not detect platform for token: ${pushToken.substring(0, 20)}...`
+    );
+    return false;
+  }
+  const data = { ppaId, notificationType };
+  let success = false;
+  try {
+    if (platform === "fcm") {
+      success = await sendFCMNotification({
+        fcmToken: pushToken,
         title,
         body,
-        priority: "high",
-        channelId: "default"
-      }
-    ]);
-    console.log("\u2705 Notification sent:", tickets);
-    await ppaRepository.update(id, {
-      lastNotifiedAt: /* @__PURE__ */ new Date()
-    });
-    return true;
+        data
+      });
+    } else {
+      success = await sendAPNsNotification({
+        apnsToken: pushToken,
+        title,
+        body,
+        data
+      });
+    }
+    if (success) {
+      const updateField = notificationType === "day_before" ? { dayBeforeNotifiedAt: /* @__PURE__ */ new Date() } : { hourBeforeNotifiedAt: /* @__PURE__ */ new Date() };
+      await ppaRepository.update(ppaId, updateField);
+    }
+    return success;
   } catch (error) {
     console.error("\u274C Error sending push notification:", error);
     return false;
   }
 }
-async function checkUpcomingPPAs() {
-  const ppas = await ppaRepository.findAllWithNoNotified();
+async function checkDayBeforeReminders() {
+  const now = /* @__PURE__ */ new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  if (currentHour !== 15 || currentMinute !== 0) {
+    return;
+  }
+  console.log("\u23F0 Checking for PPAs starting tomorrow (3 PM reminder)...");
+  const ppas = await ppaRepository.findAllWithoutDayBeforeNotification();
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-    const startDate = new Date(ppa.startDate);
-    if (!(0, import_date_fns.isTomorrow)(startDate)) continue;
-    const reminderKey = `${ppa.id}-tomorrow`;
+    const startDateTime = new Date(ppa.startDate);
+    if (!(0, import_date_fns.isTomorrow)(startDateTime)) continue;
+    const reminderKey = `${ppa.id}-day-before`;
     if (sentReminders.has(reminderKey)) continue;
+    const userPushToken = ppa.user?.pushToken;
+    if (!userPushToken) {
+      console.warn(
+        `\u26A0\uFE0F Skipping day-before reminder for PPA "${ppa.task}" - no push token found`
+      );
+      continue;
+    }
     const success = await sendPushNotification({
-      id: ppa.id,
-      pushToken: "ExponentPushToken[wNGmf-KRx9kYapx0ufw7Su]",
+      ppaId: ppa.id,
+      pushToken: userPushToken,
       title: `\u{1F4C5} Reminder: ${ppa.task} starts tomorrow!`,
-      body: `It begins at ${formatTime(ppa.startDate)} and ends on ${formatDate(ppa.dueDate)} at ${formatTime(ppa.dueTime)}. Don't forget to prepare!`
+      body: `It begins at ${dateTime.formatTime(ppa.startDate)} and ends on ${dateTime.formatDateShort(ppa.dueDate)} at ${dateTime.formatTime(ppa.dueDate)}. Don't forget to prepare!`,
+      notificationType: "day_before"
     });
     if (success) {
       sentReminders.add(reminderKey);
-      console.log(`\u2705 Sent reminder for PPA: ${ppa.task}`);
+      console.log(`\u2705 Sent day-before reminder for PPA: ${ppa.task}`);
+    } else {
+      console.error(
+        `\u274C Failed to send day-before reminder for PPA: ${ppa.task}`
+      );
+    }
+  }
+}
+async function checkHourBeforeReminders() {
+  console.log("\u23F0 Checking for PPAs starting in 2 hours...");
+  const ppas = await ppaRepository.findTodayPPAsWithoutHourNotification();
+  const now = /* @__PURE__ */ new Date();
+  console.log(`\u{1F550} Current server time: ${now.toLocaleString()}`);
+  console.log(`\u{1F550} Current UTC time: ${now.toISOString()}`);
+  console.log(
+    `\u{1F30F} Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+  );
+  for (const ppa of ppas) {
+    if (!ppa.startDate) continue;
+    console.log(`
+\u{1F50D} Checking PPA: ${ppa.task}`);
+    console.log(`   Raw startDate from DB: ${ppa.startDate}`);
+    const startDateTime = new Date(ppa.startDate);
+    console.log(`   Parsed as: ${startDateTime.toLocaleString()}`);
+    console.log(`   ISO: ${startDateTime.toISOString()}`);
+    if (!(0, import_date_fns.isToday)(startDateTime)) {
+      console.log(`   \u23ED\uFE0F Not today, skipping`);
+      continue;
+    }
+    const minutesUntilStart = (0, import_date_fns.differenceInMinutes)(startDateTime, now);
+    console.log(`   \u23F1\uFE0F Minutes until start: ${minutesUntilStart}`);
+    if (minutesUntilStart < 110 || minutesUntilStart > 130) {
+      console.log(
+        `   \u23ED\uFE0F Outside window (need 110-130, got ${minutesUntilStart})`
+      );
+      continue;
+    }
+    const reminderKey = `${ppa.id}-hour-before`;
+    if (sentReminders.has(reminderKey)) {
+      console.log(`   \u23ED\uFE0F Reminder already sent`);
+      continue;
+    }
+    const userPushToken = ppa.user?.pushToken;
+    if (!userPushToken) {
+      console.warn(`   \u26A0\uFE0F No push token found`);
+      continue;
+    }
+    const success = await sendPushNotification({
+      ppaId: ppa.id,
+      pushToken: userPushToken,
+      title: `\u23F0 Starting Soon: ${ppa.task}`,
+      body: `Your event starts in about 2 hours at ${dateTime.formatTime(ppa.startDate)}. Location: ${ppa.venue || ppa.address}`,
+      notificationType: "hour_before"
+    });
+    if (success) {
+      sentReminders.add(reminderKey);
+      console.log(`\u2705 Sent 2-hour-before reminder for PPA: ${ppa.task}`);
+    } else {
+      console.error(
+        `\u274C Failed to send 2-hour-before reminder for PPA: ${ppa.task}`
+      );
     }
   }
 }
 async function remindReschedulePPA({
-  id,
+  ppaId,
+  pushToken,
   title,
   body
 }) {
-  const data = {
-    id,
-    pushToken: "ExponentPushToken[wNGmf-KRx9kYapx0ufw7Su]",
-    title: `${title}`,
-    body: `${body}`
-  };
-  const success = await sendPushNotification(data);
-  console.log("RESCHEDULE NOTIFICATION SENT:", success);
+  const success = await sendPushNotification({
+    ppaId,
+    pushToken,
+    title,
+    body,
+    notificationType: "day_before"
+  });
+  console.log("\u{1F4EC} RESCHEDULE NOTIFICATION SENT:", success);
+  return success;
 }
 function startCronScheduler() {
   import_node_cron.default.schedule("* * * * *", async () => {
-    console.log("\u23F0 Checking for PPAs starting tomorrow...");
-    await checkUpcomingPPAs();
+    await checkHourBeforeReminders();
   });
-  console.log("\u2705 Cron scheduler started (runs every 1 minute)");
+  import_node_cron.default.schedule("* * * * *", async () => {
+    await checkDayBeforeReminders();
+  });
+  console.log("\u2705 Cron scheduler started with FCM/APNs");
+  console.log("   - Day-before reminders: Every day at 3 PM");
+  console.log("   - 2-hour-before reminders: Checking every minute");
 }
-
-// src/services/ppa.ts
-var ppaService = {
-  async getPPAById(id) {
-    const ppa = await ppaRepository.findById(id);
-    if (!ppa) throw new NotFoundError("PPA not found");
-    return ppa;
-  },
-  async getAllPPAs() {
-    return ppaRepository.findAll();
-  },
-  async getPPAsBySector(sectorId) {
-    return ppaRepository.findBySector(sectorId);
-  },
-  async getPPAsByImplementingUnit(implementingUnitId) {
-    return ppaRepository.findByImplementingUnit(implementingUnitId);
-  },
-  async createPPA(data) {
-    if (!data.task || !data.sectorId || !data.implementingUnitId) {
-      throw new BadRequestError("Missing required fields");
-    }
-    return ppaRepository.create(data);
-  },
-  async updatePPA(id, data) {
-    console.log("ID", id);
-    const existing = await this.getPPAById(id);
-    const updatedPPA = await ppaRepository.update(id, data);
-    const title = "PPA Reschuled Notification";
-    const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
-    await remindReschedulePPA({
-      id,
-      title,
-      body
-    });
-    return updatedPPA;
-  },
-  async deletePPA(id) {
-    await this.getPPAById(id);
-    return ppaRepository.delete(id);
-  }
-};
 
 // src/services/venue.ts
 var venueService = {
-  async checkLocationAvailability(startDate, dueDate, excludePPAId) {
+  async checkLocationAvailability(startDate, dueDate, excludePPAId, venue) {
     const ppas = await ppaRepository.findOverlappingPPAs(
       startDate,
       dueDate,
-      excludePPAId
+      excludePPAId,
+      venue
     );
     const conflictingPPAs = ppas.map((ppa) => ({
       id: ppa.id,
@@ -838,9 +1351,6 @@ var venueService = {
       description: ppa.description,
       startDate: ppa.startDate,
       dueDate: ppa.dueDate,
-      startTime: ppa.startTime,
-      dueTime: ppa.dueTime,
-      location: ppa.location,
       venue: ppa.venue,
       sector: ppa.sector,
       implementingUnit: ppa.implementingUnit
@@ -852,10 +1362,99 @@ var venueService = {
   }
 };
 
+// src/services/ppa.ts
+var ppaService = {
+  async getPPAById(id) {
+    const ppa = await ppaRepository.findById(id);
+    if (!ppa) throw new NotFoundError("PPA not found");
+    return ppa;
+  },
+  async getAllPPAs() {
+    const ppas = await ppaRepository.findAll();
+    const mappedPPA = ppas.map((ppa) => ({
+      ...ppa,
+      attendees: ppa.attendees.map((attendee) => ({
+        label: attendee.name,
+        value: attendee.id
+      }))
+    }));
+    return mappedPPA;
+  },
+  async getAllArchived() {
+    return ppaRepository.findAllArchived();
+  },
+  async getPPAsBySector(sectorId) {
+    return ppaRepository.findBySector(sectorId);
+  },
+  async getPPAsByImplementingUnit(implementingUnitId) {
+    return ppaRepository.findByImplementingUnit(implementingUnitId);
+  },
+  async createPPA(data) {
+    if (!data.task || !data.sectorId || !data.implementingUnitId) {
+      throw new BadRequestError("Missing required fields");
+    }
+    const availability = await venueService.checkLocationAvailability(
+      data.startDate,
+      data.dueDate,
+      void 0,
+      data.venue
+    );
+    if (!availability.available) {
+      throw new ForbiddenError(
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+      );
+    }
+    return ppaRepository.create(data);
+  },
+  async updatePPA(ppaId, data, userId) {
+    const existing = await this.getPPAById(ppaId);
+    const availability = await venueService.checkLocationAvailability(
+      data.startDate,
+      data.dueDate,
+      ppaId,
+      data.venue
+    );
+    if (!availability.available) {
+      throw new ForbiddenError(
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+      );
+    }
+    const updatedPPA = await ppaRepository.update(ppaId, data, userId);
+    const startDateChanged = data.startDate && new Date(existing.startDate).getTime() !== new Date(data.startDate).getTime();
+    const dueDateChanged = data.dueDate && new Date(existing.dueDate).getTime() !== new Date(data.dueDate).getTime();
+    if (startDateChanged || dueDateChanged) {
+      const title = "PPA Rescheduled Notification";
+      const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
+      await remindReschedulePPA({
+        ppaId,
+        pushToken: updatedPPA?.user?.pushToken,
+        title,
+        body
+      });
+      console.log("Reschedule notification sent.");
+    }
+    return updatedPPA;
+  },
+  async deletePPA(userId, ppaId) {
+    await this.getPPAById(ppaId);
+    return ppaRepository.delete(userId, ppaId);
+  }
+};
+
 // src/controllers/ppa/index.ts
 var ppaHandler = {
   async getAll(c) {
     const ppas = await ppaService.getAllPPAs();
+    return c.json(
+      {
+        success: true,
+        data: { ppas }
+      },
+      import_http_status_codes4.StatusCodes.OK
+    );
+  },
+  async getAllArchivedPPA(c) {
+    const ppas = await ppaService.getAllArchived();
     return c.json(
       {
         success: true,
@@ -910,7 +1509,8 @@ var ppaHandler = {
     const result = await venueService.checkLocationAvailability(
       new Date(startDate),
       new Date(dueDate),
-      excludePPAId
+      excludePPAId,
+      body.venue
     );
     return c.json(
       {
@@ -925,6 +1525,7 @@ var ppaHandler = {
     );
   },
   async create(c) {
+    const user = c.get("user");
     const body = await c.req.json();
     const requiredFields = [
       "task",
@@ -932,8 +1533,6 @@ var ppaHandler = {
       "address",
       "startDate",
       "dueDate",
-      "startTime",
-      "dueTime",
       "sectorId",
       "implementingUnitId"
     ];
@@ -944,15 +1543,16 @@ var ppaHandler = {
       task: body.task,
       description: body.description,
       address: body.address,
-      location: body.location,
       venue: body.venue,
       expectedOutput: body.expectedOutput,
       startDate: new Date(body.startDate),
       dueDate: new Date(body.dueDate),
-      startTime: new Date(body.startTime),
-      dueTime: new Date(body.dueTime),
       sectorId: body.sectorId,
-      implementingUnitId: body.implementingUnitId
+      budgetAllocation: body.budgetAllocation,
+      approvedBudget: body.approvedBudget,
+      implementingUnitId: body.implementingUnitId,
+      userId: user.id,
+      attendees: body.attendees
     });
     return c.json(
       {
@@ -964,14 +1564,61 @@ var ppaHandler = {
     );
   },
   async update(c) {
+    const user = c.get("user");
     const id = c.req.param("id");
-    const data = await c.req.json();
+    const body = await c.req.json();
     if (!id) throw new BadRequestError("Missing PPA ID");
-    const updated = await ppaService.updatePPA(id, data);
+    const updateData = {
+      task: body.task,
+      description: body.description,
+      address: body.address,
+      venue: body.venue,
+      expectedOutput: body.expectedOutput,
+      sectorId: body.sectorId,
+      budgetAllocation: body.budgetAllocation,
+      approvedBudget: body.approvedBudget,
+      implementingUnitId: body.implementingUnitId,
+      status: body.status,
+      remarks: body.remarks,
+      actualOutput: body.actualOutput,
+      delayedReason: body.delayedReason
+    };
+    if (body.startDate) {
+      if (body.startTime) {
+        const startDateTime = new Date(body.startDate);
+        const startTime = new Date(body.startTime);
+        startDateTime.setHours(startTime.getHours());
+        startDateTime.setMinutes(startTime.getMinutes());
+        startDateTime.setSeconds(0);
+        startDateTime.setMilliseconds(0);
+        updateData.startDate = startDateTime;
+      } else {
+        updateData.startDate = new Date(body.startDate);
+      }
+    }
+    if (body.dueDate) {
+      if (body.dueTime) {
+        const dueDateTime = new Date(body.dueDate);
+        const dueTime = new Date(body.dueTime);
+        dueDateTime.setHours(dueTime.getHours());
+        dueDateTime.setMinutes(dueTime.getMinutes());
+        dueDateTime.setSeconds(0);
+        dueDateTime.setMilliseconds(0);
+        updateData.dueDate = dueDateTime;
+      } else {
+        updateData.dueDate = new Date(body.dueDate);
+      }
+    }
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === void 0) {
+        delete updateData[key];
+      }
+    });
+    const updated = await ppaService.updatePPA(id, updateData, user.id);
     return c.json(
       {
         success: true,
-        message: "PPA rescheduled successfully",
+        message: "PPA updated successfully",
         data: updated
       },
       import_http_status_codes4.StatusCodes.OK
@@ -981,7 +1628,7 @@ var ppaHandler = {
     const user = c.get("user");
     const id = c.req.param("id");
     if (!id) throw new BadRequestError("Missing PPA ID");
-    await ppaService.deletePPA(id);
+    await ppaService.deletePPA(user.id, id);
     return c.json(
       {
         success: true,
@@ -992,36 +1639,12 @@ var ppaHandler = {
   }
 };
 
-// src/middlewares/auth.ts
-var import_cookie2 = require("hono/cookie");
-var authMiddleware = async (c, next) => {
-  const token = (0, import_cookie2.getCookie)(c, COOKIE_NAMES.accessToken);
-  if (!token) {
-    throw new UnauthorizedError("No token provided");
-  }
-  const session = await sessionRepository.findByToken(token);
-  console.log(session);
-  if (!session || /* @__PURE__ */ new Date() > session.expiresAt) {
-    throw new UnauthorizedError("Session expired or invalid");
-  }
-  const payload = await authService.verifyToken(token);
-  if (!payload) {
-    throw new UnauthorizedError("Invalid token");
-  }
-  const user = {
-    id: payload.userId,
-    email: payload.email,
-    role: payload.role
-  };
-  c.set("user", user);
-  await next();
-};
-
 // src/controllers/ppa/routes.ts
 var router3 = new import_hono3.Hono();
 router3.post("/ppas", authMiddleware, ppaHandler.create);
 router3.post("/ppas/check-availability", ppaHandler.checkAvailability);
-router3.get("/ppas", authMiddleware, ppaHandler.getAll);
+router3.get("/ppas", ppaHandler.getAll);
+router3.get("/ppas/archived", ppaHandler.getAllArchivedPPA);
 router3.get("/ppas/:id", authMiddleware, ppaHandler.getById);
 router3.patch("/ppas/:id", authMiddleware, ppaHandler.update);
 router3.delete("/ppas/:id", authMiddleware, ppaHandler.delete);
@@ -1038,20 +1661,12 @@ var implementingUnitSelect = {
   id: true,
   name: true,
   userId: true,
-  sectorId: true,
   deptHead: {
     select: {
       id: true,
       name: true,
       email: true,
       role: true
-    }
-  },
-  sector: {
-    select: {
-      id: true,
-      name: true,
-      description: true
     }
   },
   _count: {
@@ -1066,9 +1681,7 @@ var implementingUnitSelect = {
       description: true,
       address: true,
       startDate: true,
-      dueDate: true,
-      startTime: true,
-      dueTime: true
+      dueDate: true
     }
   }
 };
@@ -1085,12 +1698,6 @@ var implementingUnitRepository = {
       select: implementingUnitSelect
     });
   },
-  async findBySectorId(sectorId) {
-    return prisma_default.implementingUnit.findMany({
-      where: { sectorId },
-      select: implementingUnitSelect
-    });
-  },
   async findByUserId(userId) {
     return prisma_default.implementingUnit.findUnique({
       where: { userId },
@@ -1102,17 +1709,16 @@ var implementingUnitRepository = {
       where: { name }
     });
   },
-  async create(name, userId, sectorId) {
+  async create(name, userId) {
     return prisma_default.implementingUnit.create({
-      data: { name, userId, sectorId },
+      data: { name, userId },
       select: implementingUnitSelect
     });
   },
-  async update(id, name, userId, sectorId) {
-    console.log("PRISMA UPDATE: ", id);
+  async update(id, name, userId) {
     return prisma_default.implementingUnit.update({
       where: { id },
-      data: { name, userId, sectorId },
+      data: { name, userId },
       select: implementingUnitSelect
     });
   },
@@ -1137,7 +1743,6 @@ var sectorSelect = {
   description: true,
   _count: {
     select: {
-      ImplementingUnit: true,
       PPA: true
     }
   }
@@ -1154,19 +1759,6 @@ var sectorRepository = {
       where: { id },
       select: {
         ...sectorSelect,
-        ImplementingUnit: {
-          select: {
-            id: true,
-            name: true,
-            deptHead: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
         PPA: {
           select: {
             id: true,
@@ -1211,7 +1803,6 @@ var sectorRepository = {
         description: true,
         _count: {
           select: {
-            ImplementingUnit: true,
             PPA: true
           }
         }
@@ -1233,9 +1824,6 @@ var sectorService = {
     return sector;
   },
   async createSector(name, description) {
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
     const existingSector = await sectorRepository.findByName(name);
     if (existingSector) {
       throw new ConflictError("Sector with this name already exists");
@@ -1243,9 +1831,6 @@ var sectorService = {
     return sectorRepository.create(name, description);
   },
   async updateSector(id, name, description) {
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
     const sector = await sectorRepository.findById(id);
     if (!sector) {
       throw new NotFoundError("Sector not found");
@@ -1260,12 +1845,6 @@ var sectorService = {
     const sector = await sectorRepository.findById(id);
     if (!sector) {
       throw new NotFoundError("Sector not found");
-    }
-    const implementingUnits = await implementingUnitRepository.findBySectorId(id);
-    if (implementingUnits.length > 0) {
-      throw new BadRequestError(
-        "Cannot delete sector with existing implementing units"
-      );
     }
     return sectorRepository.delete(id);
   },
@@ -1303,9 +1882,6 @@ var sectorHandler = {
   },
   async create(c) {
     const { name, description } = await c.req.json();
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
     const sector = await sectorService.createSector(name, description);
     return c.json(
       {
@@ -1319,9 +1895,6 @@ var sectorHandler = {
   async update(c) {
     const id = c.req.param("id");
     const { name, description } = await c.req.json();
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
     const sector = await sectorService.updateSector(id, name, description);
     return c.json(
       {
@@ -1360,6 +1933,8 @@ var sectorHandler = {
 var router4 = new import_hono4.Hono();
 router4.get("/sectors", authMiddleware, sectorHandler.getAll);
 router4.post("/sectors", authMiddleware, sectorHandler.create);
+router4.patch("/sectors/:id", authMiddleware, sectorHandler.update);
+router4.delete("/sectors/:id", authMiddleware, sectorHandler.delete);
 var routes_default4 = router4;
 
 // src/controllers/implementingUnit/routes.ts
@@ -1380,13 +1955,6 @@ var implementingUnitService = {
     }
     return unit;
   },
-  async getImplementingUnitsBySectorId(sectorId) {
-    const sector = await sectorRepository.findById(sectorId);
-    if (!sector) {
-      throw new NotFoundError("Sector not found");
-    }
-    return implementingUnitRepository.findBySectorId(sectorId);
-  },
   async getImplementingUnitByUserId(userId) {
     const unit = await implementingUnitRepository.findByUserId(userId);
     if (!unit) {
@@ -1394,9 +1962,9 @@ var implementingUnitService = {
     }
     return unit;
   },
-  async createImplementingUnit(name, userId, sectorId) {
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+  async createImplementingUnit(name, userId) {
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit) {
@@ -1412,16 +1980,12 @@ var implementingUnitService = {
     if (existingDeptHead) {
       throw new ConflictError("User is already assigned as a department head");
     }
-    const sector = await sectorRepository.findById(sectorId);
-    if (!sector) {
-      throw new NotFoundError("Sector not found");
-    }
     await userRepository.updateDepartmentHeadStatus(userId, true);
-    return implementingUnitRepository.create(name, userId, sectorId);
+    return implementingUnitRepository.create(name, userId);
   },
-  async updateImplementingUnit(id, name, userId, sectorId) {
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+  async updateImplementingUnit(id, name, userId) {
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
     const unit = await implementingUnitRepository.findById(id);
     if (!unit) {
@@ -1437,7 +2001,6 @@ var implementingUnitService = {
     if (!user) {
       throw new NotFoundError("User not found");
     }
-    console.log("USER ID", userId);
     if (unit.userId !== userId) {
       const existingDeptHead = await implementingUnitRepository.findByUserId(userId);
       if (existingDeptHead && existingDeptHead.id !== id) {
@@ -1448,11 +2011,7 @@ var implementingUnitService = {
       await userRepository.updateDepartmentHeadStatus(unit.userId, false);
       await userRepository.updateDepartmentHeadStatus(userId, true);
     }
-    const sector = await sectorRepository.findById(sectorId);
-    if (!sector) {
-      throw new NotFoundError("Sector not found");
-    }
-    return implementingUnitRepository.update(id, name, userId, sectorId);
+    return implementingUnitRepository.update(id, name, userId);
   },
   async deleteImplementingUnit(id) {
     const unit = await implementingUnitRepository.findById(id);
@@ -1509,17 +2068,6 @@ var implementingUnitHandler = {
       import_http_status_codes6.StatusCodes.OK
     );
   },
-  async getBySectorId(c) {
-    const sectorId = c.req.param("sectorId");
-    const units = await implementingUnitService.getImplementingUnitsBySectorId(sectorId);
-    return c.json(
-      {
-        success: true,
-        data: { implementingUnits: units }
-      },
-      import_http_status_codes6.StatusCodes.OK
-    );
-  },
   async getByUserId(c) {
     const userId = c.req.param("userId");
     const unit = await implementingUnitService.getImplementingUnitByUserId(userId);
@@ -1532,14 +2080,13 @@ var implementingUnitHandler = {
     );
   },
   async create(c) {
-    const { name, userId, sectorId } = await c.req.json();
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+    const { name, userId } = await c.req.json();
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
     const unit = await implementingUnitService.createImplementingUnit(
       name,
-      userId,
-      sectorId
+      userId
     );
     return c.json(
       {
@@ -1552,15 +2099,14 @@ var implementingUnitHandler = {
   },
   async update(c) {
     const id = c.req.param("id");
-    const { name, userId, sectorId } = await c.req.json();
-    if (!name || !userId || !sectorId) {
-      throw new BadRequestError("Name, userId, and sectorId are required");
+    const { name, userId } = await c.req.json();
+    if (!name || !userId) {
+      throw new BadRequestError("Name, userId are required");
     }
     const unit = await implementingUnitService.updateImplementingUnit(
       id,
       name,
-      userId,
-      sectorId
+      userId
     );
     return c.json(
       {
@@ -1622,11 +2168,6 @@ router5.patch(
   authMiddleware,
   implementingUnitHandler.update
 );
-router5.get(
-  "/implementing-units/sector/:sectorId",
-  authMiddleware,
-  implementingUnitHandler.getBySectorId
-);
 var routes_default5 = router5;
 
 // src/controllers/routes.ts
@@ -1650,9 +2191,11 @@ async function errorHandlerMiddleware(err, c) {
 
 // src/index.ts
 var import_logger = require("hono/logger");
+var import_cors = require("hono/cors");
 var app = new import_hono7.Hono();
 app.onError(errorHandlerMiddleware);
 app.use((0, import_logger.logger)());
+app.use((0, import_cors.cors)());
 routes.forEach((route) => {
   app.route("/", route);
 });

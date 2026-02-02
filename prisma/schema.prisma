@@ -4,6 +4,8 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -36,7 +38,8 @@ enum PPA_STATUS {
 
 model User {
   id               String            @id @default(cuid())
-  email            String            @unique
+  email            String?           @unique
+  username         String            @unique
   password         String
   name             String
   role             ROLE              @default(VIEWER)
@@ -67,7 +70,7 @@ model Session {
 model Sector {
   id          String @id @default(cuid())
   name        String
-  description String
+  description String?
   PPA         PPA[]
 }
 

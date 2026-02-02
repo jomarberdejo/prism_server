@@ -16,3 +16,5 @@ export const envConfig = envSchema.parse({
 })
 
 export type EnvConfig = z.infer<typeof envSchema>;
+
+

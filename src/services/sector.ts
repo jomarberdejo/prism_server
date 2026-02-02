@@ -16,10 +16,6 @@ export const sectorService = {
   },
 
   async createSector(name: string, description: string) {
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
-
     const existingSector = await sectorRepository.findByName(name);
     if (existingSector) {
       throw new ConflictError("Sector with this name already exists");
@@ -29,10 +25,6 @@ export const sectorService = {
   },
 
   async updateSector(id: string, name: string, description: string) {
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
-
     const sector = await sectorRepository.findById(id);
     if (!sector) {
       throw new NotFoundError("Sector not found");

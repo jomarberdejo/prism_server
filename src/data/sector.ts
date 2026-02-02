@@ -24,7 +24,6 @@ export const sectorRepository = {
       where: { id },
       select: {
         ...sectorSelect,
-
         PPA: {
           select: {
             id: true,

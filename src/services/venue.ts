@@ -20,8 +20,6 @@ export const venueService = {
       description: ppa.description,
       startDate: ppa.startDate,
       dueDate: ppa.dueDate,
-      startTime: ppa.startTime,
-      dueTime: ppa.dueTime,
       venue: ppa.venue,
       sector: ppa.sector,
       implementingUnit: ppa.implementingUnit,

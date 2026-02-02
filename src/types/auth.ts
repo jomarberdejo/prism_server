@@ -1,12 +1,12 @@
 export interface UserPayload {
   id: string;
-  email: string;
+  username: string;
   role: string;
 }
 
 export interface TokenPayload {
   userId: string;
-  email: string;
+  username: string;
   role: string;
   [key: string]: string | number | boolean;
 }

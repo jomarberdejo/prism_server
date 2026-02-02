@@ -21,7 +21,7 @@ export const authService = {
       const payload = await verify(token, envConfig.JWT_SECRET!, "HS256");
       return {
         userId: payload.userId as string,
-        email: payload.email as string,
+        username: payload.username as string,
         role: payload.role as string,
       };
     } catch {
@@ -38,15 +38,23 @@ export const authService = {
   },
 
   async register(
-    email: string,
     password: string,
     name: string,
+    username: string,
     isDepartmentHead: boolean,
-    role: ROLE
+    role: ROLE,
+    email?: string
   ) {
-    const existingUser = await userRepository.findByEmail(email);
+    if (email) {
+      const existingUser = await userRepository.findByEmail(email);
+      if (existingUser) {
+        throw new ConflictError("Email already in use");
+      }
+    }
+
+    const existingUser = await userRepository.findByUsername(username);
     if (existingUser) {
-      throw new ConflictError("Email already in use");
+      throw new ConflictError("Username already in use");
     }
 
     if (password.length < 6) {
@@ -55,20 +63,21 @@ export const authService = {
 
     const hashedPassword = await this.hashPassword(password);
     return userRepository.create(
-      email,
       hashedPassword,
       name,
       isDepartmentHead,
-      role
+      role,
+      username,
+      email
     );
   },
 
-  async login(email: string, password: string, pushToken?: string) {
-    const user = await userRepository.findByEmail(email);
+  async login(username: string, password: string, pushToken?: string) {
+    const user = await userRepository.findByUsername(username);
     if (!user) {
       throw new UnauthorizedError("Invalid credentials");
     }
-    
+
     if (user.status === USER_STATUS.PENDING) {
       throw new UnauthorizedError("Account is pending approval");
     }
@@ -82,7 +91,7 @@ export const authService = {
     }
 
     if (pushToken) {
-      await userRepository.updatePushToken(email, pushToken);
+      await userRepository.updatePushToken(username, pushToken);
     }
 
     return user;
@@ -90,12 +99,12 @@ export const authService = {
 
   async createSession(
     userId: string,
-    email: string,
+    username: string,
     role: string
   ): Promise<string> {
     await sessionRepository.deleteByUserId(userId);
 
-    const token = await this.generateToken({ userId, email, role });
+    const token = await this.generateToken({ userId, username, role });
 
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 

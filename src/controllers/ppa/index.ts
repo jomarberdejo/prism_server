@@ -120,11 +120,6 @@ export const ppaHandler = {
       if (!body[field]) throw new BadRequestError(`Missing field: ${field}`);
     }
 
-    console.log("Creating PPA with body:", body);
-
-    console.log("START DATE", new Date(body.startDate))
-    
-
     const newPPA = await ppaService.createPPA({
       task: body.task,
       description: body.description,
@@ -158,9 +153,6 @@ export const ppaHandler = {
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    console.log("📝 Updating PPA:", id);
-    console.log("📥 Received body:", body);
-
     const updateData: any = {
       task: body.task,
       description: body.description,
@@ -171,12 +163,14 @@ export const ppaHandler = {
       budgetAllocation: body.budgetAllocation,
       approvedBudget: body.approvedBudget,
       implementingUnitId: body.implementingUnitId,
+      status: body.status,
+      remarks: body.remarks,
+      actualOutput: body.actualOutput,
+      delayedReason: body.delayedReason,
     };
 
-    // Handle startDate update
     if (body.startDate) {
       if (body.startTime) {
-        // If both date and time are provided, combine them
         const startDateTime = new Date(body.startDate);
         const startTime = new Date(body.startTime);
         startDateTime.setHours(startTime.getHours());
@@ -184,21 +178,13 @@ export const ppaHandler = {
         startDateTime.setSeconds(0);
         startDateTime.setMilliseconds(0);
         updateData.startDate = startDateTime;
-        console.log("✅ Combined startDate:", startDateTime.toISOString());
       } else {
-        // Only date provided, use as-is
         updateData.startDate = new Date(body.startDate);
-        console.log(
-          "✅ Using startDate as-is:",
-          updateData.startDate.toISOString()
-        );
       }
     }
 
-    // Handle dueDate update
     if (body.dueDate) {
       if (body.dueTime) {
-        // If both date and time are provided, combine them
         const dueDateTime = new Date(body.dueDate);
         const dueTime = new Date(body.dueTime);
         dueDateTime.setHours(dueTime.getHours());
@@ -206,35 +192,22 @@ export const ppaHandler = {
         dueDateTime.setSeconds(0);
         dueDateTime.setMilliseconds(0);
         updateData.dueDate = dueDateTime;
-        console.log("✅ Combined dueDate:", dueDateTime.toISOString());
       } else {
-        // Only date provided, use as-is
         updateData.dueDate = new Date(body.dueDate);
-        console.log(
-          "✅ Using dueDate as-is:",
-          updateData.dueDate.toISOString()
-        );
+       
       }
     }
 
-    // Remove undefined values
     Object.keys(updateData).forEach((key) => {
       if (updateData[key] === undefined) {
         delete updateData[key];
       }
     });
 
-    console.log("📤 Final update data:", updateData);
 
     const updated = await ppaService.updatePPA(id, updateData, user.id);
 
-    console.log("✅ PPA updated successfully:", {
-      id: updated.id,
-      task: updated.task,
-      startDate: updated.startDate,
-      dueDate: updated.dueDate,
-    });
-
+   
     return c.json(
       {
         success: true,

@@ -1,4 +1,3 @@
-// import { notificationService } from "@/services/notificationService";
 import { userService } from "@/services/user";
 import type { ROLE } from "@prisma/client";
 import type { Context } from "hono";
@@ -19,7 +18,6 @@ export const userHandler = {
 
   async getAllHeads(c: Context) {
     const users = await userService.getAllDepartmentHeads();
-
 
     return c.json(
       {
@@ -56,10 +54,10 @@ export const userHandler = {
     );
   },
 
-  async updateProfile(c:Context) {
-    const id = c.req.param("id"); 
+  async updateProfile(c: Context) {
+    const id = c.req.param("id");
     const body = await c.req.json();
-    
+
     const user = await userService.updateProfile(id, body);
     return c.json(
       {
@@ -96,6 +94,40 @@ export const userHandler = {
         success: true,
         message: "Status updated successfully",
         data: { user },
+      },
+      StatusCodes.OK
+    );
+  },
+
+  async updateDepartmentHeadStatus(c: Context) {
+    const id = c.req.param("id");
+    const { isDepartmentHead } = await c.req.json();
+
+    const user = await userService.updateDepartmentHeadStatus(
+      id,
+      isDepartmentHead
+    );
+
+    return c.json(
+      {
+        success: true,
+        message: "Department head status updated successfully",
+        data: { user },
+      },
+      StatusCodes.OK
+    );
+  },
+
+  async updatePassword(c: Context) {
+    const { currentPassword, newPassword } = await c.req.json();
+    const user = c.get("user");
+
+    await userService.updatePassword(user.id, currentPassword, newPassword);
+
+    return c.json(
+      {
+        success: true,
+        message: "Password updated successfully",
       },
       StatusCodes.OK
     );

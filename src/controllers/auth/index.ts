@@ -11,14 +11,13 @@ import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
 
 export const authHandler = {
   async register(c: Context) {
-    const { email, password, name, isDepartmentHead, role } = await c.req.json();
+    const { email, password, name, username, isDepartmentHead, role } = await c.req.json();
 
-    if (!email || !password || !name) {
+    if (!password || !name || !username) {
       throw new BadRequestError("Missing required fields");
     }
 
-    const user = await authService.register(email, password, name, isDepartmentHead, role);
-
+    const user = await authService.register(password, name, username, isDepartmentHead, role, email);
     return c.json(
       {
         success: true,
@@ -30,19 +29,18 @@ export const authHandler = {
   },
 
   async login(c: Context) {
-    const { email, password, pushToken } = await c.req.json();
-    const data = await c.req.json();
+    const { username, password, pushToken } = await c.req.json();
 
 
-    if (!email || !password) {
-      throw new BadRequestError("Email and password required");
+    if (!username || !password) {
+      throw new BadRequestError("Username and password required");
     }
 
-    const user = await authService.login(email, password, pushToken);
+    const user = await authService.login(username, password, pushToken);
 
     const token = await authService.createSession(
       user.id,
-      user.email,
+      user.username,
       user.role
     );
 
@@ -58,6 +56,7 @@ export const authHandler = {
           user: {
             id: user.id,
             email: user.email,
+            username: user.username,
             name: user.name,
             role: user.role,
             isDepartmentHead: user.isDepartmentHead,

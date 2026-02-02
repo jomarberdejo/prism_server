@@ -33,8 +33,8 @@ const ppaSelect: Prisma.PPASelect = {
   user: {
     select: {
       pushToken: true,
-    }
-  }
+    },
+  },
 } as const;
 
 export const ppaRepository = {
@@ -182,12 +182,12 @@ export const ppaRepository = {
         id: ppaId,
         userId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+      },
     });
 
-    console.log("USERID: ", userId);
-    console.log("PPAUSERID: ", ppa);
-
+  
     if (!ppa) {
       throw new ForbiddenError(
         "You are not authorized to perform this action."
@@ -224,49 +224,6 @@ export const ppaRepository = {
       select: ppaSelect,
     });
   },
-
-  // async findUpcomingPPAs() {
-  //   const now = new Date();
-  //   const tomorrow = new Date(now);
-  //   tomorrow.setDate(now.getDate() + 1);
-
-  //   return prisma.pPA.findMany({
-  //     where: {
-  //       startDate: {
-  //         gte: now,
-  //         lte: tomorrow,
-  //       },
-  //     },
-  //     select: ppaSelect,
-  //   });
-  // },
-
-  // async findConflictingLocations(
-
-  //   startDate: Date,
-  //   dueDate: Date,
-  //   excludePPAId?: string
-  // ) {
-  //   return prisma.pPA.findMany({
-  //     where: {
-  //       AND: [
-  //         {
-  //           startDate: { lte: dueDate },
-  //           dueDate: { gte: startDate },
-  //         },
-  //         ...(excludePPAId ? [{ id: { not: excludePPAId } }] : []),
-  //       ],
-  //     },
-  //     select: {
-  //       id: true,
-  //       task: true,
-  //       startDate: true,
-  //       dueDate: true,
-  //       location: true,
-  //       venue: true,
-  //     },
-  //   });
-  // },
 
   async findOverlappingPPAs(
     startDate: Date,

@@ -4,18 +4,26 @@ import type { Prisma, ROLE, User, USER_STATUS } from "@prisma/client";
 const userSelect: Prisma.UserSelect = {
   id: true,
   email: true,
+  username: true,
   name: true,
   role: true,
   createdAt: true,
   isDepartmentHead: true,
   pushToken: true,
   status: true,
+  password: true,
 } as const;
 
 export const userRepository = {
   async findByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
+    });
+  },
+
+  async findByUsername(username: string) {
+    return prisma.user.findUnique({
+      where: { username },
     });
   },
 
@@ -27,14 +35,22 @@ export const userRepository = {
   },
 
   async create(
-    email: string,
     hashedPassword: string,
     name: string,
     isDepartmentHead: boolean,
     role: ROLE,
+    username: string,
+    email?: string
   ) {
     return prisma.user.create({
-      data: { email, password: hashedPassword, name, isDepartmentHead, role },
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        isDepartmentHead,
+        role,
+        username,
+      },
       select: userSelect,
     });
   },
@@ -53,7 +69,6 @@ export const userRepository = {
           },
         },
       },
-      
     });
   },
 
@@ -88,11 +103,24 @@ export const userRepository = {
     });
   },
 
-  
+  async updatePassword(userId: string, hashedPassword: string) {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+      },
+    });
+  },
 
-  async updatePushToken(email: string, pushToken: string) {
+  async updatePushToken(username: string, pushToken: string) {
     return prisma.user.update({
-      where: { email },
+      where: { username },
       data: { pushToken },
       select: userSelect,
     });

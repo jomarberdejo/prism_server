@@ -11,7 +11,7 @@ export const sectorHandler = {
         success: true,
         data: { sectors },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -24,16 +24,12 @@ export const sectorHandler = {
         success: true,
         data: { sector },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
   async create(c: Context) {
     const { name, description } = await c.req.json();
-
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
 
     const sector = await sectorService.createSector(name, description);
 
@@ -43,17 +39,13 @@ export const sectorHandler = {
         message: "Sector created successfully",
         data: { sector },
       },
-      StatusCodes.CREATED,
+      StatusCodes.CREATED
     );
   },
 
   async update(c: Context) {
     const id = c.req.param("id");
     const { name, description } = await c.req.json();
-
-    if (!name || !description) {
-      throw new BadRequestError("Name and description are required");
-    }
 
     const sector = await sectorService.updateSector(id, name, description);
 
@@ -63,7 +55,7 @@ export const sectorHandler = {
         message: "Sector updated successfully",
         data: { sector },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -76,7 +68,7 @@ export const sectorHandler = {
         success: true,
         message: "Sector deleted successfully",
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 
@@ -89,7 +81,7 @@ export const sectorHandler = {
         success: true,
         data: { stats },
       },
-      StatusCodes.OK,
+      StatusCodes.OK
     );
   },
 };

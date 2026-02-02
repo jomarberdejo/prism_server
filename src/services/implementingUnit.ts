@@ -79,7 +79,6 @@ export const implementingUnitService = {
       throw new NotFoundError("User not found");
     }
 
-    console.log("USER ID", userId);
 
     if (unit.userId !== userId) {
       const existingDeptHead =

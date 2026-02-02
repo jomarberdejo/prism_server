@@ -57,8 +57,8 @@ export const ppaService = {
   },
 
   async updatePPA(ppaId: string, data: any, userId: string) {
-    console.log("ID", ppaId);
-    // const existing = await this.getPPAById(id);
+    
+    const existing = await this.getPPAById(ppaId);
 
     const availability = await venueService.checkLocationAvailability(
       data.startDate,
@@ -73,14 +73,22 @@ export const ppaService = {
     }
 
     const updatedPPA = await ppaRepository.update(ppaId, data, userId);
-    const title = "PPA Reschuled Notification";
-    const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
-    await remindReschedulePPA({
-      ppaId,
-      pushToken: "",
-      title,
-      body,
-    });
+
+    const startDateChanged = data.startDate && new Date(existing.startDate).getTime() !== new Date(data.startDate).getTime();
+    const dueDateChanged = data.dueDate && new Date(existing.dueDate).getTime() !== new Date(data.dueDate).getTime();
+
+    if (startDateChanged || dueDateChanged) {
+      const title = "PPA Rescheduled Notification";
+      const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
+      await remindReschedulePPA({
+        ppaId,
+        pushToken: updatedPPA?.user?.pushToken as string,
+        title,
+        body,
+      });
+      console.log("Reschedule notification sent.");
+    }
+
     return updatedPPA;
   },
 

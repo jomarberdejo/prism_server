@@ -1,4 +1,4 @@
-import { envConfig } from "@/env";
+import { envConfig } from "@/config/env";
 import { PrismaClient } from "@prisma/client";
 
 declare global {

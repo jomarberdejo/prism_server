@@ -947,45 +947,6 @@ var ppaRepository = {
       select: ppaSelect
     });
   },
-  // async findUpcomingPPAs() {
-  //   const now = new Date();
-  //   const tomorrow = new Date(now);
-  //   tomorrow.setDate(now.getDate() + 1);
-  //   return prisma.pPA.findMany({
-  //     where: {
-  //       startDate: {
-  //         gte: now,
-  //         lte: tomorrow,
-  //       },
-  //     },
-  //     select: ppaSelect,
-  //   });
-  // },
-  // async findConflictingLocations(
-  //   startDate: Date,
-  //   dueDate: Date,
-  //   excludePPAId?: string
-  // ) {
-  //   return prisma.pPA.findMany({
-  //     where: {
-  //       AND: [
-  //         {
-  //           startDate: { lte: dueDate },
-  //           dueDate: { gte: startDate },
-  //         },
-  //         ...(excludePPAId ? [{ id: { not: excludePPAId } }] : []),
-  //       ],
-  //     },
-  //     select: {
-  //       id: true,
-  //       task: true,
-  //       startDate: true,
-  //       dueDate: true,
-  //       location: true,
-  //       venue: true,
-  //     },
-  //   });
-  // },
   async findOverlappingPPAs(startDate, dueDate, excludePPAId, venue) {
     const start = new Date(startDate);
     const end = new Date(dueDate);
@@ -1099,7 +1060,6 @@ if (!import_firebase_admin.default.apps.length) {
     import_firebase_admin.default.initializeApp({
       credential: import_firebase_admin.default.credential.cert(service_account_default)
     });
-    console.log("\u2705 Firebase Admin initialized");
   } catch (error) {
     console.error("\u274C Firebase Admin initialization error:", error);
   }
@@ -1131,7 +1091,6 @@ async function sendFCMNotification({
   };
   try {
     const response = await import_firebase_admin.default.messaging().send(message);
-    console.log("\u2705 FCM notification sent:", response);
     return true;
   } catch (error) {
     console.error("\u274C Error sending FCM notification:", error);
@@ -1160,7 +1119,6 @@ async function sendAPNsNotification({
   };
   try {
     const response = await import_firebase_admin.default.messaging().send(message);
-    console.log("\u2705 APNs notification sent:", response);
     return true;
   } catch (error) {
     console.error("\u274C Error sending APNs notification:", error);
@@ -1185,7 +1143,10 @@ async function sendPushNotification({
     );
     return false;
   }
-  const data = { ppaId, notificationType };
+  const data = { ppaId };
+  if (notificationType) {
+    data.notificationType = notificationType;
+  }
   let success = false;
   try {
     if (platform === "fcm") {
@@ -1203,7 +1164,7 @@ async function sendPushNotification({
         data
       });
     }
-    if (success) {
+    if (success && notificationType) {
       const updateField = notificationType === "day_before" ? { dayBeforeNotifiedAt: /* @__PURE__ */ new Date() } : { hourBeforeNotifiedAt: /* @__PURE__ */ new Date() };
       await ppaRepository.update(ppaId, updateField);
     }
@@ -1220,7 +1181,6 @@ async function checkDayBeforeReminders() {
   if (currentHour !== 15 || currentMinute !== 0) {
     return;
   }
-  console.log("\u23F0 Checking for PPAs starting tomorrow (3 PM reminder)...");
   const ppas = await ppaRepository.findAllWithoutDayBeforeNotification();
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
@@ -1244,7 +1204,6 @@ async function checkDayBeforeReminders() {
     });
     if (success) {
       sentReminders.add(reminderKey);
-      console.log(`\u2705 Sent day-before reminder for PPA: ${ppa.task}`);
     } else {
       console.error(
         `\u274C Failed to send day-before reminder for PPA: ${ppa.task}`
@@ -1253,37 +1212,20 @@ async function checkDayBeforeReminders() {
   }
 }
 async function checkHourBeforeReminders() {
-  console.log("\u23F0 Checking for PPAs starting in 2 hours...");
   const ppas = await ppaRepository.findTodayPPAsWithoutHourNotification();
   const now = /* @__PURE__ */ new Date();
-  console.log(`\u{1F550} Current server time: ${now.toLocaleString()}`);
-  console.log(`\u{1F550} Current UTC time: ${now.toISOString()}`);
-  console.log(
-    `\u{1F30F} Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`
-  );
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-    console.log(`
-\u{1F50D} Checking PPA: ${ppa.task}`);
-    console.log(`   Raw startDate from DB: ${ppa.startDate}`);
     const startDateTime = new Date(ppa.startDate);
-    console.log(`   Parsed as: ${startDateTime.toLocaleString()}`);
-    console.log(`   ISO: ${startDateTime.toISOString()}`);
     if (!(0, import_date_fns.isToday)(startDateTime)) {
-      console.log(`   \u23ED\uFE0F Not today, skipping`);
       continue;
     }
     const minutesUntilStart = (0, import_date_fns.differenceInMinutes)(startDateTime, now);
-    console.log(`   \u23F1\uFE0F Minutes until start: ${minutesUntilStart}`);
     if (minutesUntilStart < 110 || minutesUntilStart > 130) {
-      console.log(
-        `   \u23ED\uFE0F Outside window (need 110-130, got ${minutesUntilStart})`
-      );
       continue;
     }
     const reminderKey = `${ppa.id}-hour-before`;
     if (sentReminders.has(reminderKey)) {
-      console.log(`   \u23ED\uFE0F Reminder already sent`);
       continue;
     }
     const userPushToken = ppa.user?.pushToken;
@@ -1300,7 +1242,6 @@ async function checkHourBeforeReminders() {
     });
     if (success) {
       sentReminders.add(reminderKey);
-      console.log(`\u2705 Sent 2-hour-before reminder for PPA: ${ppa.task}`);
     } else {
       console.error(
         `\u274C Failed to send 2-hour-before reminder for PPA: ${ppa.task}`
@@ -1314,15 +1255,40 @@ async function remindReschedulePPA({
   title,
   body
 }) {
-  const success = await sendPushNotification({
-    ppaId,
-    pushToken,
-    title,
-    body,
-    notificationType: "day_before"
-  });
-  console.log("\u{1F4EC} RESCHEDULE NOTIFICATION SENT:", success);
-  return success;
+  if (!pushToken) {
+    console.warn(`\u274C No push token provided for PPA: ${ppaId}`);
+    return false;
+  }
+  const platform = detectPlatform(pushToken);
+  if (!platform) {
+    console.warn(
+      `\u274C Could not detect platform for token: ${pushToken.substring(0, 20)}...`
+    );
+    return false;
+  }
+  const data = { ppaId };
+  let success = false;
+  try {
+    if (platform === "fcm") {
+      success = await sendFCMNotification({
+        fcmToken: pushToken,
+        title,
+        body,
+        data
+      });
+    } else {
+      success = await sendAPNsNotification({
+        apnsToken: pushToken,
+        title,
+        body,
+        data
+      });
+    }
+    return success;
+  } catch (error) {
+    console.error("\u274C Error sending reschedule notification:", error);
+    return false;
+  }
 }
 function startCronScheduler() {
   import_node_cron.default.schedule("* * * * *", async () => {
@@ -1331,9 +1297,6 @@ function startCronScheduler() {
   import_node_cron.default.schedule("* * * * *", async () => {
     await checkDayBeforeReminders();
   });
-  console.log("\u2705 Cron scheduler started with FCM/APNs");
-  console.log("   - Day-before reminders: Every day at 3 PM");
-  console.log("   - 2-hour-before reminders: Checking every minute");
 }
 
 // src/services/venue.ts
@@ -2202,7 +2165,8 @@ routes.forEach((route) => {
 (0, import_node_server.serve)(
   {
     fetch: app.fetch,
-    port: envConfig.APP_PORT
+    port: envConfig.APP_PORT,
+    hostname: "0.0.0.0"
   },
   (info) => {
     console.log(`\u2705 Server is running on http://localhost:${info.port}`);

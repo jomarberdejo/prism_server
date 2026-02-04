@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { routes } from "./controllers/routes";
 import { errorHandlerMiddleware } from "./middlewares/error-handler";
 import { logger } from "hono/logger";
-import { envConfig } from "./env";
+import { envConfig } from "./config/env";
 import { startCronScheduler } from "./services/notificationService";
 import { cors } from 'hono/cors';
 

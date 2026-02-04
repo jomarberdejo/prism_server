@@ -3,7 +3,12 @@ import cron from "node-cron";
 import { isTomorrow, isToday, differenceInMinutes } from "date-fns";
 import { ppaRepository } from "@/data/ppa";
 import { dateTime } from "@/utils/dates";
-import serviceAccount from "../../service-account.json";
+import { envConfig } from "@/config/env";
+
+
+const serviceAccount = JSON.parse(
+  Buffer.from(envConfig.SERVICE_ACCOUNT_JSON!, "base64").toString()
+);
 
 if (!admin.apps.length) {
   try {

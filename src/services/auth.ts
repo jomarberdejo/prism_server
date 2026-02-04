@@ -8,7 +8,7 @@ import { sign, verify } from "hono/jwt";
 import bcrypt from "bcryptjs";
 import { userRepository } from "@/data/user";
 import { sessionRepository } from "@/data/session";
-import { envConfig } from "@/env";
+import { envConfig } from "@/config/env";
 import { USER_STATUS, type ROLE } from "@prisma/client";
 
 export const authService = {

@@ -1,12 +1,8 @@
 import moment from "moment-timezone";
 
-// Set default timezone to Asia/Manila
 const DEFAULT_TIMEZONE = "Asia/Manila";
 
-/**
- * Custom moment utility that defaults to Asia/Manila timezone
- * Assumes DB stores local Manila times
- */
+
 class DateTimeUtil {
   private timezone: string;
 
@@ -18,7 +14,6 @@ class DateTimeUtil {
    * Parse a date stored in local Manila time
    */
   parse(date: string | Date | number) {
-    // Treat the input as already in Manila time
     return moment.tz(date, this.timezone);
   }
 
@@ -69,8 +64,6 @@ class DateTimeUtil {
   }
 }
 
-// Export singleton instance
 export const dateTime = new DateTimeUtil();
 
-// Export class for custom instances if needed
 export default DateTimeUtil;

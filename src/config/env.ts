@@ -6,6 +6,7 @@ const envSchema = z.object({
     NODE_ENV: z.nativeEnum(NODE_ENV).default(NODE_ENV.Local),
     APP_PORT: z.coerce.number().default(3000),
     JWT_SECRET: z.string(),
+    SERVICE_ACCOUNT_JSON: z.string(),
 })
 
 export const envConfig = envSchema.parse({
@@ -13,6 +14,7 @@ export const envConfig = envSchema.parse({
     NODE_ENV: process.env.NODE_ENV,
     APP_PORT: process.env.APP_PORT,
     JWT_SECRET: process.env.JWT_SECRET,
+    SERVICE_ACCOUNT_JSON: process.env.SERVICE_ACCOUNT_JSON,
 })
 
 export type EnvConfig = z.infer<typeof envSchema>;

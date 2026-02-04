@@ -1,4 +1,4 @@
-import { envConfig } from "@/env";
+import { envConfig } from "@/config/env";
 
 export const COOKIE_NAMES = {
   accessToken: "accessToken",

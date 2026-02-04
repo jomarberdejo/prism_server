@@ -32,3 +32,5 @@ lerna-debug.log*
 /generated/prisma
 service-account.json
 prism-key.pem
+
+dist/

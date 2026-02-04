@@ -8,7 +8,6 @@ import { envConfig } from "./config/env";
 import { startCronScheduler } from "./services/notificationService";
 import { cors } from 'hono/cors';
 
-
 const app = new Hono();
 
 app.onError(errorHandlerMiddleware);
@@ -16,7 +15,7 @@ app.use(logger());
 app.use(cors());
 
 routes.forEach((route) => {
-  app.route("/", route);
+  app.route("/api", route);
 });
 
 

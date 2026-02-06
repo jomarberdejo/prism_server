@@ -6,7 +6,7 @@ import { dateTime } from "@/utils/dates";
 import { envConfig } from "@/config/env";
 
 const serviceAccount = JSON.parse(
-  Buffer.from(envConfig.SERVICE_ACCOUNT_JSON!, "base64").toString()
+  Buffer.from(envConfig.SERVICE_ACCOUNT_JSON!, "base64").toString(),
 );
 
 if (!admin.apps.length) {
@@ -111,9 +111,19 @@ async function sendPushNotification({
   let success = false;
   try {
     if (platform === "fcm") {
-      success = await sendFCMNotification({ fcmToken: pushToken, title, body, data });
+      success = await sendFCMNotification({
+        fcmToken: pushToken,
+        title,
+        body,
+        data,
+      });
     } else {
-      success = await sendAPNsNotification({ apnsToken: pushToken, title, body, data });
+      success = await sendAPNsNotification({
+        apnsToken: pushToken,
+        title,
+        body,
+        data,
+      });
     }
     return success;
   } catch {
@@ -153,9 +163,10 @@ async function checkDayBeforeReminders() {
 
       if (success) sentReminders.add(reminderKey);
       successCount++;
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
     }
-    if (successCount > 0) await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: new Date() });
+    if (successCount > 0)
+      await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: new Date() });
   }
 }
 
@@ -193,9 +204,10 @@ async function checkHourBeforeReminders() {
 
       if (success) sentReminders.add(reminderKey);
       successCount++;
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 100));
     }
-    if (successCount > 0) await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: new Date() });
+    if (successCount > 0)
+      await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: new Date() });
   }
 }
 
@@ -218,9 +230,19 @@ export async function remindReschedulePPA({
   let success = false;
   try {
     if (platform === "fcm") {
-      success = await sendFCMNotification({ fcmToken: pushToken, title, body, data });
+      success = await sendFCMNotification({
+        fcmToken: pushToken,
+        title,
+        body,
+        data,
+      });
     } else {
-      success = await sendAPNsNotification({ apnsToken: pushToken, title, body, data });
+      success = await sendAPNsNotification({
+        apnsToken: pushToken,
+        title,
+        body,
+        data,
+      });
     }
     return success;
   } catch {
@@ -229,6 +251,10 @@ export async function remindReschedulePPA({
 }
 
 export function startCronScheduler() {
-  cron.schedule("* * * * *", async () => { await checkHourBeforeReminders(); });
-  cron.schedule("0 15 * * *", async () => { await checkDayBeforeReminders(); });
+  cron.schedule("* * * * *", async () => {
+    await checkHourBeforeReminders();
+  });
+  cron.schedule("45 15 * * *", async () => {
+    await checkDayBeforeReminders();
+  });
 }

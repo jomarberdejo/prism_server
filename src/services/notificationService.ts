@@ -254,7 +254,7 @@ export function startCronScheduler() {
   cron.schedule("* * * * *", async () => {
     await checkHourBeforeReminders();
   });
-  cron.schedule("45 15 * * *", async () => {
+  cron.schedule("49 15 * * *", async () => {
     await checkDayBeforeReminders();
   });
 }

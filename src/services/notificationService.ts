@@ -252,7 +252,7 @@ export async function remindReschedulePPA({
 
 export function startCronScheduler() {
   cron.schedule(
-    "45 15 * * *",
+    "* * * * *",
     async () => {
       await checkHourBeforeReminders();
     },
@@ -262,7 +262,7 @@ export function startCronScheduler() {
   );
 
   cron.schedule(
-    "45 15 * * *",
+    "55 15 * * *",
     async () => {
       await checkDayBeforeReminders();
     },

@@ -158,7 +158,7 @@ async function checkDayBeforeReminders() {
   const currentHour = now.hour();
   const currentMinute = now.minute();
 
-  if (currentHour !== 12 || currentMinute !== 15) {
+  if (currentHour !== 15 || currentMinute !== 0) {
     return;
   }
 

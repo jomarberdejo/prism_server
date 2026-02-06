@@ -251,10 +251,23 @@ export async function remindReschedulePPA({
 }
 
 export function startCronScheduler() {
-  cron.schedule("* * * * *", async () => {
-    await checkHourBeforeReminders();
-  });
-  cron.schedule("49 15 * * *", async () => {
-    await checkDayBeforeReminders();
-  });
+  cron.schedule(
+    "45 15 * * *",
+    async () => {
+      await checkHourBeforeReminders();
+    },
+    {
+      timezone: "Asia/Manila",
+    },
+  );
+
+  cron.schedule(
+    "45 15 * * *",
+    async () => {
+      await checkDayBeforeReminders();
+    },
+    {
+      timezone: "Asia/Manila",
+    },
+  );
 }

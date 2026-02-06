@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import cron from "node-cron";
 import { ppaRepository } from "@/data/ppa";
-import { userRepository } from "@/data/user"; 
+import { userRepository } from "@/data/user";
 import { dateTime } from "@/utils/dates";
 import { envConfig } from "@/config/env";
 
@@ -15,7 +15,7 @@ if (!admin.apps.length) {
       credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
     });
   } catch (error) {
-    console.error("❌ Firebase Admin initialization error:", error);
+    console.error(error);
   }
 }
 
@@ -51,12 +51,10 @@ async function sendFCMNotification({
       },
     },
   };
-
   try {
-    const response = await admin.messaging().send(message);
+    await admin.messaging().send(message);
     return true;
-  } catch (error) {
-    console.error("❌ Error sending FCM notification:", error);
+  } catch {
     return false;
   }
 }
@@ -78,20 +76,14 @@ async function sendAPNsNotification({
     data,
     apns: {
       payload: {
-        aps: {
-          alert: { title, body },
-          sound: "default",
-          badge: 1,
-        },
+        aps: { alert: { title, body }, sound: "default", badge: 1 },
       },
     },
   };
-
   try {
-    const response = await admin.messaging().send(message);
+    await admin.messaging().send(message);
     return true;
-  } catch (error) {
-    console.error("❌ Error sending APNs notification:", error);
+  } catch {
     return false;
   }
 }
@@ -109,86 +101,46 @@ async function sendPushNotification({
   body: string;
   notificationType: "day_before" | "hour_before";
 }) {
-  if (!pushToken) {
-    console.warn(`❌ No push token provided for PPA: ${ppaId}`);
-    return false;
-  }
-
+  if (!pushToken) return false;
   const platform = detectPlatform(pushToken);
-  if (!platform) {
-    console.warn(
-      `❌ Could not detect platform for token: ${pushToken.substring(0, 20)}...`
-    );
-    return false;
-  }
+  if (!platform) return false;
 
   const data: Record<string, string> = { ppaId };
-  if (notificationType) {
-    data.notificationType = notificationType;
-  }
+  if (notificationType) data.notificationType = notificationType;
 
   let success = false;
-
   try {
     if (platform === "fcm") {
-      success = await sendFCMNotification({
-        fcmToken: pushToken,
-        title,
-        body,
-        data,
-      });
+      success = await sendFCMNotification({ fcmToken: pushToken, title, body, data });
     } else {
-      success = await sendAPNsNotification({
-        apnsToken: pushToken,
-        title,
-        body,
-        data,
-      });
+      success = await sendAPNsNotification({ apnsToken: pushToken, title, body, data });
     }
-
     return success;
-  } catch (error) {
-    console.error("❌ Error sending push notification:", error);
+  } catch {
     return false;
   }
 }
 
 async function checkDayBeforeReminders() {
-  const now = dateTime.now();
-  const currentHour = now.hour();
-  const currentMinute = now.minute();
-
-  if (currentHour !== 15 || currentMinute !== 0) {
-    return;
-  }
-
   const activeUsers = await userRepository.findActiveUsersWithPushTokens();
-
-  if (!activeUsers || activeUsers.length === 0) {
-    console.log("⚠️ No active users with push tokens found");
-    return;
-  }
+  if (!activeUsers || activeUsers.length === 0) return;
 
   const ppas = await ppaRepository.findAllWithoutDayBeforeNotification();
+  if (!ppas || ppas.length === 0) return;
+
+  const now = dateTime.now();
 
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-
     const startDateTime = dateTime.parse(ppa.startDate);
-    const tomorrow = dateTime.now().add(1, "day");
-
+    const tomorrow = now.clone().add(1, "day");
     const isTomorrow = startDateTime.isSame(tomorrow, "day");
-
     if (!isTomorrow) continue;
 
     let successCount = 0;
-    let failCount = 0;
-
     for (const user of activeUsers) {
       if (!user.pushToken) continue;
-
       const reminderKey = `${ppa.id}-${user.id}-day-before`;
-      
       if (sentReminders.has(reminderKey)) continue;
 
       const success = await sendPushNotification({
@@ -199,67 +151,37 @@ async function checkDayBeforeReminders() {
         notificationType: "day_before",
       });
 
-      if (success) {
-        sentReminders.add(reminderKey);
-        successCount++;
-      } else {
-        failCount++;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (success) sentReminders.add(reminderKey);
+      successCount++;
+      await new Promise(r => setTimeout(r, 100));
     }
-
-    if (successCount > 0) {
-      await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: new Date() });
-      console.log(
-        `✅ Sent day-before reminder for PPA "${ppa.task}" to ${successCount} users (${failCount} failed)`
-      );
-    } else {
-      console.error(
-        `❌ Failed to send day-before reminder for PPA "${ppa.task}" to any users`
-      );
-    }
+    if (successCount > 0) await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: new Date() });
   }
 }
 
 async function checkHourBeforeReminders() {
   const activeUsers = await userRepository.findActiveUsersWithPushTokens();
-
-  if (!activeUsers || activeUsers.length === 0) {
-    return;
-  }
+  if (!activeUsers || activeUsers.length === 0) return;
 
   const ppas = await ppaRepository.findTodayPPAsWithoutHourNotification();
+  if (!ppas || ppas.length === 0) return;
+
   const now = dateTime.now();
 
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-
     const startDateTime = dateTime.parse(ppa.startDate);
-
     const isToday = startDateTime.isSame(now, "day");
-
-    if (!isToday) {
-      continue;
-    }
+    if (!isToday) continue;
 
     const minutesUntilStart = startDateTime.diff(now, "minutes");
-
-    if (minutesUntilStart < 110 || minutesUntilStart > 130) {
-      continue;
-    }
+    if (minutesUntilStart < 110 || minutesUntilStart > 130) continue;
 
     let successCount = 0;
-    let failCount = 0;
-
     for (const user of activeUsers) {
       if (!user.pushToken) continue;
-
       const reminderKey = `${ppa.id}-${user.id}-hour-before`;
-      
-      if (sentReminders.has(reminderKey)) {
-        continue;
-      }
+      if (sentReminders.has(reminderKey)) continue;
 
       const success = await sendPushNotification({
         ppaId: ppa.id,
@@ -269,26 +191,11 @@ async function checkHourBeforeReminders() {
         notificationType: "hour_before",
       });
 
-      if (success) {
-        sentReminders.add(reminderKey);
-        successCount++;
-      } else {
-        failCount++;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (success) sentReminders.add(reminderKey);
+      successCount++;
+      await new Promise(r => setTimeout(r, 100));
     }
-
-    if (successCount > 0) {
-      await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: new Date() });
-      console.log(
-        `✅ Sent 2-hour reminder for PPA "${ppa.task}" to ${successCount} users (${failCount} failed)`
-      );
-    } else {
-      console.error(
-        `❌ Failed to send 2-hour reminder for PPA "${ppa.task}" to any users`
-      );
-    }
+    if (successCount > 0) await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: new Date() });
   }
 }
 
@@ -303,57 +210,25 @@ export async function remindReschedulePPA({
   title: string;
   body: string;
 }) {
-  if (!pushToken) {
-    console.warn(`❌ No push token provided for PPA: ${ppaId}`);
-    return false;
-  }
-
+  if (!pushToken) return false;
   const platform = detectPlatform(pushToken);
-  if (!platform) {
-    console.warn(
-      `❌ Could not detect platform for token: ${pushToken.substring(0, 20)}...`
-    );
-    return false;
-  }
+  if (!platform) return false;
 
   const data = { ppaId };
   let success = false;
-
   try {
     if (platform === "fcm") {
-      success = await sendFCMNotification({
-        fcmToken: pushToken,
-        title,
-        body,
-        data,
-      });
+      success = await sendFCMNotification({ fcmToken: pushToken, title, body, data });
     } else {
-      success = await sendAPNsNotification({
-        apnsToken: pushToken,
-        title,
-        body,
-        data,
-      });
+      success = await sendAPNsNotification({ apnsToken: pushToken, title, body, data });
     }
-
     return success;
-  } catch (error) {
-    console.error("❌ Error sending reschedule notification:", error);
+  } catch {
     return false;
   }
 }
 
 export function startCronScheduler() {
-  console.log("🚀 Starting cron scheduler in Asia/Manila timezone");
-  console.log("📢 Notifications will be sent to all ACTIVE users");
-
-  cron.schedule("* * * * *", async () => {
-    await checkHourBeforeReminders();
-  });
-
-  cron.schedule("* * * * *", async () => {
-    await checkDayBeforeReminders();
-  });
-
-  console.log("✅ Cron scheduler started successfully");
+  cron.schedule("* * * * *", async () => { await checkHourBeforeReminders(); });
+  cron.schedule("0 15 * * *", async () => { await checkDayBeforeReminders(); });
 }

@@ -166,7 +166,7 @@ async function checkDayBeforeReminders() {
   const currentMinute = now.minute();
 
   // Only run at 3 PM (15:00) Manila time
-  if (currentHour !== 11 || currentMinute !== 40) {
+  if (currentHour !== 11 || currentMinute !== 46) {
     return;
   }
 

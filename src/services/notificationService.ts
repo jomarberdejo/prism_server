@@ -168,7 +168,7 @@ async function checkDayBeforeReminders() {
   const currentMinute = now.getMinutes();
 
   // Only run at 3 PM (15:00)
-  if (currentHour !== 15 || currentMinute !== 0) {
+  if (currentHour !== 11 || currentMinute !== 20) {
     return;
   }
 

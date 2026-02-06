@@ -18,7 +18,6 @@ routes.forEach((route) => {
   app.route("/api", route);
 });
 
-
 serve(
   {
     fetch: app.fetch,

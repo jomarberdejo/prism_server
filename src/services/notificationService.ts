@@ -1,6 +1,7 @@
 import admin from "firebase-admin";
 import cron from "node-cron";
 import { ppaRepository } from "@/data/ppa";
+import { userRepository } from "@/data/user"; 
 import { dateTime } from "@/utils/dates";
 import { envConfig } from "@/config/env";
 
@@ -145,14 +146,6 @@ async function sendPushNotification({
       });
     }
 
-    if (success && notificationType) {
-      const updateField =
-        notificationType === "day_before"
-          ? { dayBeforeNotifiedAt: new Date() }
-          : { hourBeforeNotifiedAt: new Date() };
-      await ppaRepository.update(ppaId, updateField);
-    }
-
     return success;
   } catch (error) {
     console.error("❌ Error sending push notification:", error);
@@ -165,8 +158,14 @@ async function checkDayBeforeReminders() {
   const currentHour = now.hour();
   const currentMinute = now.minute();
 
-  // Only run at 3 PM (15:00) Manila time
-  if (currentHour !== 11 || currentMinute !== 59) {
+  if (currentHour !== 12 || currentMinute !== 15) {
+    return;
+  }
+
+  const activeUsers = await userRepository.findActiveUsersWithPushTokens();
+
+  if (!activeUsers || activeUsers.length === 0) {
+    console.log("⚠️ No active users with push tokens found");
     return;
   }
 
@@ -178,42 +177,58 @@ async function checkDayBeforeReminders() {
     const startDateTime = dateTime.parse(ppa.startDate);
     const tomorrow = dateTime.now().add(1, "day");
 
-    // Check if startDate is tomorrow (same date in Manila timezone)
     const isTomorrow = startDateTime.isSame(tomorrow, "day");
 
     if (!isTomorrow) continue;
 
-    const reminderKey = `${ppa.id}-day-before`;
-    if (sentReminders.has(reminderKey)) continue;
+    let successCount = 0;
+    let failCount = 0;
 
-    const userPushToken = ppa.user?.pushToken;
-    if (!userPushToken) {
-      console.warn(
-        `⚠️ Skipping day-before reminder for PPA "${ppa.task}" - no push token found`
-      );
-      continue;
+    for (const user of activeUsers) {
+      if (!user.pushToken) continue;
+
+      const reminderKey = `${ppa.id}-${user.id}-day-before`;
+      
+      if (sentReminders.has(reminderKey)) continue;
+
+      const success = await sendPushNotification({
+        ppaId: ppa.id,
+        pushToken: user.pushToken,
+        title: `📅 Reminder: ${ppa.task} starts tomorrow!`,
+        body: `It begins at ${dateTime.formatTime(ppa.startDate)} and ends on ${dateTime.formatDateShort(ppa.dueDate)} at ${dateTime.formatTime(ppa.dueDate)}. Don't forget to prepare!`,
+        notificationType: "day_before",
+      });
+
+      if (success) {
+        sentReminders.add(reminderKey);
+        successCount++;
+      } else {
+        failCount++;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    const success = await sendPushNotification({
-      ppaId: ppa.id,
-      pushToken: userPushToken,
-      title: `📅 Reminder: ${ppa.task} starts tomorrow!`,
-      body: `It begins at ${dateTime.formatTime(ppa.startDate)} and ends on ${dateTime.formatDateShort(ppa.dueDate)} at ${dateTime.formatTime(ppa.dueDate)}. Don't forget to prepare!`,
-      notificationType: "day_before",
-    });
-
-    if (success) {
-      sentReminders.add(reminderKey);
-      console.log(`✅ Sent day-before reminder for PPA: ${ppa.task}`);
+    if (successCount > 0) {
+      await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: new Date() });
+      console.log(
+        `✅ Sent day-before reminder for PPA "${ppa.task}" to ${successCount} users (${failCount} failed)`
+      );
     } else {
       console.error(
-        `❌ Failed to send day-before reminder for PPA: ${ppa.task}`
+        `❌ Failed to send day-before reminder for PPA "${ppa.task}" to any users`
       );
     }
   }
 }
 
 async function checkHourBeforeReminders() {
+  const activeUsers = await userRepository.findActiveUsersWithPushTokens();
+
+  if (!activeUsers || activeUsers.length === 0) {
+    return;
+  }
+
   const ppas = await ppaRepository.findTodayPPAsWithoutHourNotification();
   const now = dateTime.now();
 
@@ -222,46 +237,56 @@ async function checkHourBeforeReminders() {
 
     const startDateTime = dateTime.parse(ppa.startDate);
 
-    // Check if startDate is today (same date in Manila timezone)
     const isToday = startDateTime.isSame(now, "day");
 
     if (!isToday) {
       continue;
     }
 
-    // Calculate minutes until start
     const minutesUntilStart = startDateTime.diff(now, "minutes");
 
-    // Send notification if between 110-130 minutes before (approximately 2 hours)
     if (minutesUntilStart < 110 || minutesUntilStart > 130) {
       continue;
     }
 
-    const reminderKey = `${ppa.id}-hour-before`;
-    if (sentReminders.has(reminderKey)) {
-      continue;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const user of activeUsers) {
+      if (!user.pushToken) continue;
+
+      const reminderKey = `${ppa.id}-${user.id}-hour-before`;
+      
+      if (sentReminders.has(reminderKey)) {
+        continue;
+      }
+
+      const success = await sendPushNotification({
+        ppaId: ppa.id,
+        pushToken: user.pushToken,
+        title: `⏰ Starting Soon: ${ppa.task}`,
+        body: `Your event starts in about 2 hours at ${dateTime.formatTime(ppa.startDate)}. Location: ${ppa.venue || ppa.address}`,
+        notificationType: "hour_before",
+      });
+
+      if (success) {
+        sentReminders.add(reminderKey);
+        successCount++;
+      } else {
+        failCount++;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    const userPushToken = ppa.user?.pushToken;
-    if (!userPushToken) {
-      console.warn(`⚠️ No push token found for PPA: ${ppa.task}`);
-      continue;
-    }
-
-    const success = await sendPushNotification({
-      ppaId: ppa.id,
-      pushToken: userPushToken,
-      title: `⏰ Starting Soon: ${ppa.task}`,
-      body: `Your event starts in about 2 hours at ${dateTime.formatTime(ppa.startDate)}. Location: ${ppa.venue || ppa.address}`,
-      notificationType: "hour_before",
-    });
-
-    if (success) {
-      sentReminders.add(reminderKey);
-      console.log(`✅ Sent 2-hour reminder for PPA: ${ppa.task}`);
+    if (successCount > 0) {
+      await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: new Date() });
+      console.log(
+        `✅ Sent 2-hour reminder for PPA "${ppa.task}" to ${successCount} users (${failCount} failed)`
+      );
     } else {
       console.error(
-        `❌ Failed to send 2-hour-before reminder for PPA: ${ppa.task}`
+        `❌ Failed to send 2-hour reminder for PPA "${ppa.task}" to any users`
       );
     }
   }
@@ -320,13 +345,12 @@ export async function remindReschedulePPA({
 
 export function startCronScheduler() {
   console.log("🚀 Starting cron scheduler in Asia/Manila timezone");
+  console.log("📢 Notifications will be sent to all ACTIVE users");
 
-  // Check every minute for hour-before reminders
   cron.schedule("* * * * *", async () => {
     await checkHourBeforeReminders();
   });
 
-  // Check every minute for day-before reminders (but only sends at 3 PM Manila time)
   cron.schedule("* * * * *", async () => {
     await checkDayBeforeReminders();
   });

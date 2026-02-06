@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import type { Prisma, ROLE, User, USER_STATUS } from "@prisma/client";
+import { USER_STATUS, type Prisma, type ROLE, type User } from "@prisma/client";
 
 const userSelect: Prisma.UserSelect = {
   id: true,
@@ -34,13 +34,32 @@ export const userRepository = {
     });
   },
 
+  async findActiveUsersWithPushTokens() {
+    return prisma.user.findMany({
+      where: {
+        status: USER_STATUS.ACTIVE,
+        pushToken: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        pushToken: true,
+        role: true,
+      },
+    });
+  },
+
   async create(
     hashedPassword: string,
     name: string,
     isDepartmentHead: boolean,
     role: ROLE,
     username: string,
-    email?: string
+    email?: string,
   ) {
     return prisma.user.create({
       data: {

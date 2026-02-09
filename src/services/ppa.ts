@@ -2,6 +2,7 @@ import { ppaRepository } from "@/data/ppa";
 import { NotFoundError, BadRequestError, ForbiddenError } from "@/utils/error";
 import { remindReschedulePPA } from "./notificationService";
 import { venueService } from "@/services/venue";
+import { dateTime } from "@/utils/dates";
 
 export const ppaService = {
   async getPPAById(id: string) {
@@ -57,7 +58,6 @@ export const ppaService = {
   },
 
   async updatePPA(ppaId: string, data: any, userId: string) {
-    
     const existing = await this.getPPAById(ppaId);
 
     const availability = await venueService.checkLocationAvailability(
@@ -74,19 +74,38 @@ export const ppaService = {
 
     const updatedPPA = await ppaRepository.update(ppaId, data, userId);
 
-    const startDateChanged = data.startDate && new Date(existing.startDate).getTime() !== new Date(data.startDate).getTime();
-    const dueDateChanged = data.dueDate && new Date(existing.dueDate).getTime() !== new Date(data.dueDate).getTime();
+    const existingStartDate = dateTime.parse(existing.startDate);
+    const newStartDate = data.startDate ? dateTime.parse(data.startDate) : null;
+    const existingDueDate = dateTime.parse(existing.dueDate);
+    const newDueDate = data.dueDate ? dateTime.parse(data.dueDate) : null;
+
+    const startDateChanged = 
+      newStartDate && !existingStartDate.isSame(newStartDate);
+    const dueDateChanged = 
+      newDueDate && !existingDueDate.isSame(newDueDate);
 
     if (startDateChanged || dueDateChanged) {
-      const title = "PPA Rescheduled Notification";
-      const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
+      let scheduleMessage = "The PPA has been rescheduled.";
+      
+      if (startDateChanged && dueDateChanged) {
+        scheduleMessage = `New schedule: ${dateTime.formatDateTime(data.startDate)} to ${dateTime.formatDateTime(data.dueDate)}`;
+      } else if (startDateChanged) {
+        scheduleMessage = `New start time: ${dateTime.formatDateTime(data.startDate)}`;
+      } else if (dueDateChanged) {
+        scheduleMessage = `New end time: ${dateTime.formatDateTime(data.dueDate)}`;
+      }
+
+      const title = "📅 PPA Rescheduled";
+      const body = `Reminder: "${updatedPPA.task}" has been rescheduled. ${scheduleMessage}`;
+      
       await remindReschedulePPA({
         ppaId,
         pushToken: updatedPPA?.user?.pushToken as string,
         title,
         body,
       });
-      console.log("Reschedule notification sent.");
+      
+      console.log(`✅ Reschedule notification sent for PPA: ${updatedPPA.task}`);
     }
 
     return updatedPPA;

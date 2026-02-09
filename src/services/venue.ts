@@ -25,6 +25,8 @@ export const venueService = {
       implementingUnit: ppa.implementingUnit,
     }));
 
+    console.log("Conflicting PPAs:", conflictingPPAs);
+
     return {
       available: conflictingPPAs.length === 0,
       conflictingPPAs,

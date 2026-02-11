@@ -35,17 +35,14 @@ export const userRepository = {
   },
 
   async findAuthDataById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      password: true,
-    },
-  });
-}
-
-
-
+    return prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+  },
 
   async findActiveUsersWithPushTokens() {
     return prisma.user.findMany({

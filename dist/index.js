@@ -45,7 +45,7 @@ var VALID_STATUSES = [
   "REJECTED"
 ];
 
-// src/env.ts
+// src/config/env.ts
 var import_zod = require("zod");
 
 // src/constants/env.ts
@@ -55,18 +55,20 @@ var NODE_ENV = {
   Prod: "production"
 };
 
-// src/env.ts
+// src/config/env.ts
 var envSchema = import_zod.z.object({
   DATABASE_URL: import_zod.z.string(),
   NODE_ENV: import_zod.z.nativeEnum(NODE_ENV).default(NODE_ENV.Local),
   APP_PORT: import_zod.z.coerce.number().default(3e3),
-  JWT_SECRET: import_zod.z.string()
+  JWT_SECRET: import_zod.z.string(),
+  SERVICE_ACCOUNT_JSON: import_zod.z.string()
 });
 var envConfig = envSchema.parse({
   DATABASE_URL: process.env.DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
   APP_PORT: process.env.APP_PORT,
-  JWT_SECRET: process.env.JWT_SECRET
+  JWT_SECRET: process.env.JWT_SECRET,
+  SERVICE_ACCOUNT_JSON: process.env.SERVICE_ACCOUNT_JSON
 });
 
 // src/lib/prisma.ts
@@ -78,6 +80,7 @@ if (process.env.NODE_ENV !== envConfig.NODE_ENV) {
 var prisma_default = prisma;
 
 // src/data/user.ts
+var import_client2 = require("@prisma/client");
 var userSelect = {
   id: true,
   email: true,
@@ -87,8 +90,8 @@ var userSelect = {
   createdAt: true,
   isDepartmentHead: true,
   pushToken: true,
-  status: true,
-  password: true
+  status: true
+  // password: true,
 };
 var userRepository = {
   async findByEmail(email) {
@@ -105,6 +108,24 @@ var userRepository = {
     return prisma_default.user.findUnique({
       where: { id },
       select: userSelect
+    });
+  },
+  async findActiveUsersWithPushTokens() {
+    return prisma_default.user.findMany({
+      where: {
+        status: import_client2.USER_STATUS.ACTIVE,
+        pushToken: {
+          not: null
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        username: true,
+        pushToken: true,
+        role: true
+      }
     });
   },
   async create(hashedPassword, name, isDepartmentHead, role, username, email) {
@@ -299,7 +320,7 @@ function makeError(error) {
 }
 
 // src/services/user.ts
-var import_client3 = require("@prisma/client");
+var import_client4 = require("@prisma/client");
 
 // src/services/auth.ts
 var import_jwt = require("hono/jwt");
@@ -333,7 +354,7 @@ var sessionRepository = {
 };
 
 // src/services/auth.ts
-var import_client2 = require("@prisma/client");
+var import_client3 = require("@prisma/client");
 var authService = {
   generateToken(payload) {
     return (0, import_jwt.sign)(payload, envConfig.JWT_SECRET, "HS256");
@@ -385,10 +406,10 @@ var authService = {
     if (!user) {
       throw new UnauthorizedError("Invalid credentials");
     }
-    if (user.status === import_client2.USER_STATUS.PENDING) {
+    if (user.status === import_client3.USER_STATUS.PENDING) {
       throw new UnauthorizedError("Account is pending approval");
     }
-    if (user.status === import_client2.USER_STATUS.REJECTED) {
+    if (user.status === import_client3.USER_STATUS.REJECTED) {
       throw new UnauthorizedError("Account is rejected");
     }
     const isPasswordValid = await this.comparePassword(password, user.password);
@@ -761,7 +782,7 @@ var import_hono3 = require("hono");
 var import_http_status_codes4 = require("http-status-codes");
 
 // src/data/ppa.ts
-var import_client4 = require("@prisma/client");
+var import_client5 = require("@prisma/client");
 var ppaSelect = {
   id: true,
   task: true,
@@ -981,7 +1002,6 @@ var ppaRepository = {
 // src/services/notificationService.ts
 var import_firebase_admin = __toESM(require("firebase-admin"));
 var import_node_cron = __toESM(require("node-cron"));
-var import_date_fns = require("date-fns");
 
 // src/utils/dates.ts
 var import_moment_timezone = __toESM(require("moment-timezone"));
@@ -1039,29 +1059,17 @@ var DateTimeUtil = class {
 };
 var dateTime = new DateTimeUtil();
 
-// service-account.json
-var service_account_default = {
-  type: "service_account",
-  project_id: "prism-ae194",
-  private_key_id: "b2e8dc14da4d352e623faa69da31a1fe3ce78ee7",
-  private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDZ+q36BUt4j+SR\nINRXSktKGOnJ9CXxb5FF4dmNtp2LJ2560swxzreo69xeNOp5Ovl5TzGd38KAxg2E\nIgsM54hIdmkJCKzLkmJwhJIHtx626T0/egsoJolEKS+270mddAFygnfnrK2F6hN4\n2cHrs0uNiR0vsp9Y7giXO2lv5Y420y3aFTVv7DyR3BnBIejWeltM3DL2TgtbcJ97\nJbSaXQNOh+FAoTqLynGAWBdzKUVzxs/XQ8QBRNh1nQHaBg72x1UvEaz1L+mc7OGh\njJLLin7B+4zz7p0suTAsh1FR8ZiT56ykCLh0s5r8gRk+I8t4VF0nSmoyFNcRzlop\nG+6BGgwDAgMBAAECggEAIXBg82OP4gKDosvcJzlAzDDUNI9H/tNfACRsdl6W/nuM\naY/K6V0iiZRdLZ/afxclTDnHjRuAFWHMkwI8mxHYXfK5nDwrczM/91jZpLtacomH\nRCSZxOKx2LX6GYsjH4y7PXDMVMsFokR4EOhUOlnlSOTJiGv+IUCq1WBfhV3mxNFf\nYrt5txz6VtMp4+Z/EVOHdXGQxWIPxlvCTjPuIZZjeuk7ShjDG0NUdvlRrfkaZbiP\nRnIBkOhp+AnwxIlO95ZxTvmAOI6ABzJfasW/QCR5T/JiI0wbZDcy/UbPROE789k0\nw83mFF92VKGy7k0MShQAYkp7cwebxk3pvPVu5uxNIQKBgQD5ay6PdoLKR8KaLJ8B\nhauVPx/bgjtfcvUTkYOdSaWu0/QuyGe1G3gGFDnBrQf/7fhVY43BW5If/jheElvR\n3spziKjZnxAXZFGFI+ZlztxlQwOdBBbJ/7a9+QVQo6FkakHjm04jgFG/ywQ3NAVA\ndDLVQAF32JPzwWeT7YkuYTJocwKBgQDfux/ySjcEesOkqV959IE+RE2UPoTwQg67\ntVNQ4htqjEOrUrLqtLJoCVWvKOqTSs8fnZl5YGVZXcD7t9vamHt/D/OP1OV8mqXE\nxsi+8hx/QPbqo+Ex4fzsf37dgcg1UsrV+B5KcSOL5edDU5Tj3xu9KlMqAgkP+p+X\nKajfiY46MQKBgBdxi57QdNquhAwZxZhPCCGvHT90rj/6fi6orsZJ9djI81qyW40a\nV926aPNbYDUeGQltohValhGLw6CT+S1w03aokbZizRBlzYPGLBHFr9GUyvInQD0c\nXADfNzCtMK5PjoHmRyHvHb/5RRwrN5MnWN/SdFDfeoie1S2CVjKV0DchAoGBALli\nNHZvSGdN0g7+yT4ke3M85YuQwlbSZaLj/MVolY8T6n5raBVS5QGPupAJN1YVBssL\nq8AHP/Ns3Bu3nVTkRHBkp0zm+8Dj47fJf025ECPhkLecU10iBJFyk4y3nU2R7MCf\nd3n3hZzGQ3pmJ1kp5bI4//Au/5Nd+B8pReTz9gYBAoGAYveZFIt/OJX++8Chgyab\nomEU3EpHTAYT5rZ4+ofaZw4TeUELY/J+PeihgkaIkmrlHsoA0yIbv9raRqFyyViT\nQjjJYe+AwBWgtiqVEdVffo/RuzmjukrThHdOFXwgkQzRk5xIZgV6/ISbstM03gSf\nfWn9RHGCMCEP0ArJ1IiBzGs=\n-----END PRIVATE KEY-----\n",
-  client_email: "firebase-adminsdk-fbsvc@prism-ae194.iam.gserviceaccount.com",
-  client_id: "109471655014926653006",
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40prism-ae194.iam.gserviceaccount.com",
-  universe_domain: "googleapis.com"
-};
-
 // src/services/notificationService.ts
+var serviceAccount = JSON.parse(
+  Buffer.from(envConfig.SERVICE_ACCOUNT_JSON, "base64").toString()
+);
 if (!import_firebase_admin.default.apps.length) {
   try {
     import_firebase_admin.default.initializeApp({
-      credential: import_firebase_admin.default.credential.cert(service_account_default)
+      credential: import_firebase_admin.default.credential.cert(serviceAccount)
     });
   } catch (error) {
-    console.error("\u274C Firebase Admin initialization error:", error);
+    console.error(error);
   }
 }
 var sentReminders = /* @__PURE__ */ new Set();
@@ -1090,10 +1098,9 @@ async function sendFCMNotification({
     }
   };
   try {
-    const response = await import_firebase_admin.default.messaging().send(message);
+    await import_firebase_admin.default.messaging().send(message);
     return true;
-  } catch (error) {
-    console.error("\u274C Error sending FCM notification:", error);
+  } catch {
     return false;
   }
 }
@@ -1109,19 +1116,14 @@ async function sendAPNsNotification({
     data,
     apns: {
       payload: {
-        aps: {
-          alert: { title, body },
-          sound: "default",
-          badge: 1
-        }
+        aps: { alert: { title, body }, sound: "default", badge: 1 }
       }
     }
   };
   try {
-    const response = await import_firebase_admin.default.messaging().send(message);
+    await import_firebase_admin.default.messaging().send(message);
     return true;
-  } catch (error) {
-    console.error("\u274C Error sending APNs notification:", error);
+  } catch {
     return false;
   }
 }
@@ -1132,21 +1134,11 @@ async function sendPushNotification({
   body,
   notificationType
 }) {
-  if (!pushToken) {
-    console.warn(`\u274C No push token provided for PPA: ${ppaId}`);
-    return false;
-  }
+  if (!pushToken) return false;
   const platform = detectPlatform(pushToken);
-  if (!platform) {
-    console.warn(
-      `\u274C Could not detect platform for token: ${pushToken.substring(0, 20)}...`
-    );
-    return false;
-  }
+  if (!platform) return false;
   const data = { ppaId };
-  if (notificationType) {
-    data.notificationType = notificationType;
-  }
+  if (notificationType) data.notificationType = notificationType;
   let success = false;
   try {
     if (platform === "fcm") {
@@ -1164,89 +1156,74 @@ async function sendPushNotification({
         data
       });
     }
-    if (success && notificationType) {
-      const updateField = notificationType === "day_before" ? { dayBeforeNotifiedAt: /* @__PURE__ */ new Date() } : { hourBeforeNotifiedAt: /* @__PURE__ */ new Date() };
-      await ppaRepository.update(ppaId, updateField);
-    }
     return success;
-  } catch (error) {
-    console.error("\u274C Error sending push notification:", error);
+  } catch {
     return false;
   }
 }
 async function checkDayBeforeReminders() {
-  const now = /* @__PURE__ */ new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  if (currentHour !== 15 || currentMinute !== 0) {
-    return;
-  }
+  const activeUsers = await userRepository.findActiveUsersWithPushTokens();
+  if (!activeUsers || activeUsers.length === 0) return;
   const ppas = await ppaRepository.findAllWithoutDayBeforeNotification();
+  if (!ppas || ppas.length === 0) return;
+  const now = dateTime.now();
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-    const startDateTime = new Date(ppa.startDate);
-    if (!(0, import_date_fns.isTomorrow)(startDateTime)) continue;
-    const reminderKey = `${ppa.id}-day-before`;
-    if (sentReminders.has(reminderKey)) continue;
-    const userPushToken = ppa.user?.pushToken;
-    if (!userPushToken) {
-      console.warn(
-        `\u26A0\uFE0F Skipping day-before reminder for PPA "${ppa.task}" - no push token found`
-      );
-      continue;
+    const startDateTime = dateTime.parse(ppa.startDate);
+    const tomorrow = now.clone().add(1, "day");
+    const isTomorrow = startDateTime.isSame(tomorrow, "day");
+    if (!isTomorrow) continue;
+    let successCount = 0;
+    for (const user of activeUsers) {
+      if (!user.pushToken) continue;
+      const reminderKey = `${ppa.id}-${user.id}-day-before`;
+      if (sentReminders.has(reminderKey)) continue;
+      const success = await sendPushNotification({
+        ppaId: ppa.id,
+        pushToken: user.pushToken,
+        title: `\u{1F4C5} Reminder: ${ppa.task} starts tomorrow!`,
+        body: `It begins at ${dateTime.formatTime(ppa.startDate)} and ends on ${dateTime.formatDateShort(ppa.dueDate)} at ${dateTime.formatTime(ppa.dueDate)}. Don't forget to prepare!`,
+        notificationType: "day_before"
+      });
+      if (success) sentReminders.add(reminderKey);
+      successCount++;
+      await new Promise((r) => setTimeout(r, 100));
     }
-    const success = await sendPushNotification({
-      ppaId: ppa.id,
-      pushToken: userPushToken,
-      title: `\u{1F4C5} Reminder: ${ppa.task} starts tomorrow!`,
-      body: `It begins at ${dateTime.formatTime(ppa.startDate)} and ends on ${dateTime.formatDateShort(ppa.dueDate)} at ${dateTime.formatTime(ppa.dueDate)}. Don't forget to prepare!`,
-      notificationType: "day_before"
-    });
-    if (success) {
-      sentReminders.add(reminderKey);
-    } else {
-      console.error(
-        `\u274C Failed to send day-before reminder for PPA: ${ppa.task}`
-      );
-    }
+    if (successCount > 0)
+      await ppaRepository.update(ppa.id, { dayBeforeNotifiedAt: /* @__PURE__ */ new Date() });
   }
 }
 async function checkHourBeforeReminders() {
+  const activeUsers = await userRepository.findActiveUsersWithPushTokens();
+  if (!activeUsers || activeUsers.length === 0) return;
   const ppas = await ppaRepository.findTodayPPAsWithoutHourNotification();
-  const now = /* @__PURE__ */ new Date();
+  if (!ppas || ppas.length === 0) return;
+  const now = dateTime.now();
   for (const ppa of ppas) {
     if (!ppa.startDate) continue;
-    const startDateTime = new Date(ppa.startDate);
-    if (!(0, import_date_fns.isToday)(startDateTime)) {
-      continue;
+    const startDateTime = dateTime.parse(ppa.startDate);
+    const isToday = startDateTime.isSame(now, "day");
+    if (!isToday) continue;
+    const minutesUntilStart = startDateTime.diff(now, "minutes");
+    if (minutesUntilStart < 110 || minutesUntilStart > 130) continue;
+    let successCount = 0;
+    for (const user of activeUsers) {
+      if (!user.pushToken) continue;
+      const reminderKey = `${ppa.id}-${user.id}-hour-before`;
+      if (sentReminders.has(reminderKey)) continue;
+      const success = await sendPushNotification({
+        ppaId: ppa.id,
+        pushToken: user.pushToken,
+        title: `\u23F0 Starting Soon: ${ppa.task}`,
+        body: `Your event starts in about 2 hours at ${dateTime.formatTime(ppa.startDate)}. Location: ${ppa.venue || ppa.address}`,
+        notificationType: "hour_before"
+      });
+      if (success) sentReminders.add(reminderKey);
+      successCount++;
+      await new Promise((r) => setTimeout(r, 100));
     }
-    const minutesUntilStart = (0, import_date_fns.differenceInMinutes)(startDateTime, now);
-    if (minutesUntilStart < 110 || minutesUntilStart > 130) {
-      continue;
-    }
-    const reminderKey = `${ppa.id}-hour-before`;
-    if (sentReminders.has(reminderKey)) {
-      continue;
-    }
-    const userPushToken = ppa.user?.pushToken;
-    if (!userPushToken) {
-      console.warn(`   \u26A0\uFE0F No push token found`);
-      continue;
-    }
-    const success = await sendPushNotification({
-      ppaId: ppa.id,
-      pushToken: userPushToken,
-      title: `\u23F0 Starting Soon: ${ppa.task}`,
-      body: `Your event starts in about 2 hours at ${dateTime.formatTime(ppa.startDate)}. Location: ${ppa.venue || ppa.address}`,
-      notificationType: "hour_before"
-    });
-    if (success) {
-      sentReminders.add(reminderKey);
-    } else {
-      console.error(
-        `\u274C Failed to send 2-hour-before reminder for PPA: ${ppa.task}`
-      );
-    }
+    if (successCount > 0)
+      await ppaRepository.update(ppa.id, { hourBeforeNotifiedAt: /* @__PURE__ */ new Date() });
   }
 }
 async function remindReschedulePPA({
@@ -1255,17 +1232,9 @@ async function remindReschedulePPA({
   title,
   body
 }) {
-  if (!pushToken) {
-    console.warn(`\u274C No push token provided for PPA: ${ppaId}`);
-    return false;
-  }
+  if (!pushToken) return false;
   const platform = detectPlatform(pushToken);
-  if (!platform) {
-    console.warn(
-      `\u274C Could not detect platform for token: ${pushToken.substring(0, 20)}...`
-    );
-    return false;
-  }
+  if (!platform) return false;
   const data = { ppaId };
   let success = false;
   try {
@@ -1285,18 +1254,29 @@ async function remindReschedulePPA({
       });
     }
     return success;
-  } catch (error) {
-    console.error("\u274C Error sending reschedule notification:", error);
+  } catch {
     return false;
   }
 }
 function startCronScheduler() {
-  import_node_cron.default.schedule("* * * * *", async () => {
-    await checkHourBeforeReminders();
-  });
-  import_node_cron.default.schedule("* * * * *", async () => {
-    await checkDayBeforeReminders();
-  });
+  import_node_cron.default.schedule(
+    "* * * * *",
+    async () => {
+      await checkHourBeforeReminders();
+    },
+    {
+      timezone: "Asia/Manila"
+    }
+  );
+  import_node_cron.default.schedule(
+    "55 15 * * *",
+    async () => {
+      await checkDayBeforeReminders();
+    },
+    {
+      timezone: "Asia/Manila"
+    }
+  );
 }
 
 // src/services/venue.ts
@@ -1318,6 +1298,7 @@ var venueService = {
       sector: ppa.sector,
       implementingUnit: ppa.implementingUnit
     }));
+    console.log("Conflicting PPAs:", conflictingPPAs);
     return {
       available: conflictingPPAs.length === 0,
       conflictingPPAs
@@ -1383,18 +1364,30 @@ var ppaService = {
       );
     }
     const updatedPPA = await ppaRepository.update(ppaId, data, userId);
-    const startDateChanged = data.startDate && new Date(existing.startDate).getTime() !== new Date(data.startDate).getTime();
-    const dueDateChanged = data.dueDate && new Date(existing.dueDate).getTime() !== new Date(data.dueDate).getTime();
+    const existingStartDate = dateTime.parse(existing.startDate);
+    const newStartDate = data.startDate ? dateTime.parse(data.startDate) : null;
+    const existingDueDate = dateTime.parse(existing.dueDate);
+    const newDueDate = data.dueDate ? dateTime.parse(data.dueDate) : null;
+    const startDateChanged = newStartDate && !existingStartDate.isSame(newStartDate);
+    const dueDateChanged = newDueDate && !existingDueDate.isSame(newDueDate);
     if (startDateChanged || dueDateChanged) {
-      const title = "PPA Rescheduled Notification";
-      const body = `Reminder: The PPA "${updatedPPA.task}" has been rescheduled. Please check the new schedule. Thank you!`;
+      let scheduleMessage = "The PPA has been rescheduled.";
+      if (startDateChanged && dueDateChanged) {
+        scheduleMessage = `New schedule: ${dateTime.formatDateTime(data.startDate)} to ${dateTime.formatDateTime(data.dueDate)}`;
+      } else if (startDateChanged) {
+        scheduleMessage = `New start time: ${dateTime.formatDateTime(data.startDate)}`;
+      } else if (dueDateChanged) {
+        scheduleMessage = `New end time: ${dateTime.formatDateTime(data.dueDate)}`;
+      }
+      const title = "\u{1F4C5} PPA Rescheduled";
+      const body = `Reminder: "${updatedPPA.task}" has been rescheduled. ${scheduleMessage}`;
       await remindReschedulePPA({
         ppaId,
         pushToken: updatedPPA?.user?.pushToken,
         title,
         body
       });
-      console.log("Reschedule notification sent.");
+      console.log(`\u2705 Reschedule notification sent for PPA: ${updatedPPA.task}`);
     }
     return updatedPPA;
   },
@@ -2160,7 +2153,7 @@ app.onError(errorHandlerMiddleware);
 app.use((0, import_logger.logger)());
 app.use((0, import_cors.cors)());
 routes.forEach((route) => {
-  app.route("/", route);
+  app.route("/api", route);
 });
 (0, import_node_server.serve)(
   {

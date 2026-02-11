@@ -11,7 +11,7 @@ const userSelect: Prisma.UserSelect = {
   isDepartmentHead: true,
   pushToken: true,
   status: true,
-  password: true,
+  // password: true,
 } as const;
 
 export const userRepository = {

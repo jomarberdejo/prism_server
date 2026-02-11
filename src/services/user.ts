@@ -36,16 +36,16 @@ export const userService = {
   async updatePassword(
     userId: string,
     currentPassword: string,
-    newPassword: string
+    newPassword: string,
   ) {
-    const user = await userRepository.findById(userId);
+    const user = await userRepository.findAuthDataById(userId);
     if (!user) {
       throw new NotFoundError("User not found");
     }
 
     const isValidPassword = await authService.comparePassword(
       currentPassword,
-      user.password
+      user.password,
     );
     if (!isValidPassword) {
       throw new BadRequestError("Current password is incorrect");
@@ -57,11 +57,11 @@ export const userService = {
 
     const isSamePassword = await authService.comparePassword(
       newPassword,
-      user.password
+      user.password,
     );
     if (isSamePassword) {
       throw new BadRequestError(
-        "New password must be different from current password"
+        "New password must be different from current password",
       );
     }
 

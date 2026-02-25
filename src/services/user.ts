@@ -84,7 +84,6 @@ export const userService = {
       throw new BadRequestError("Invalid status");
     }
 
-    const user = await this.getUserById(userId);
     const updatedUser = await userRepository.updateStatus(userId, status);
 
     if (updatedUser.email) {

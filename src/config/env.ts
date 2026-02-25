@@ -7,6 +7,8 @@ const envSchema = z.object({
     APP_PORT: z.coerce.number().default(3000),
     JWT_SECRET: z.string(),
     SERVICE_ACCOUNT_JSON: z.string(),
+    RESEND_API_KEY: z.string(),
+    RESEND_DOMAIN: z.string(),
 })
 
 export const envConfig = envSchema.parse({
@@ -15,6 +17,8 @@ export const envConfig = envSchema.parse({
     APP_PORT: process.env.APP_PORT,
     JWT_SECRET: process.env.JWT_SECRET,
     SERVICE_ACCOUNT_JSON: process.env.SERVICE_ACCOUNT_JSON,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_DOMAIN: process.env.RESEND_DOMAIN,
 })
 
 export type EnvConfig = z.infer<typeof envSchema>;

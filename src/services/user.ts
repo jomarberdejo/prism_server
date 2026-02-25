@@ -8,6 +8,7 @@ import {
 } from "@/utils/error";
 import { type USER_STATUS, type ROLE } from "@prisma/client";
 import { authService } from "./auth";
+import { mailer } from "@/lib/mailer";
 
 export const userService = {
   async getUserById(id: string) {
@@ -84,7 +85,21 @@ export const userService = {
     }
 
     const user = await this.getUserById(userId);
-    return userRepository.updateStatus(userId, status);
+    const updatedUser = await userRepository.updateStatus(userId, status);
+
+    if (updatedUser.email) {
+      try {
+        await mailer.sendStatusUpdate(
+          updatedUser.email,
+          updatedUser.name,
+          status,
+        );
+      } catch (err) {
+        console.error("Failed to send status email:", err);
+      }
+    }
+
+    return updatedUser;
   },
 
   async updateDepartmentHeadStatus(userId: string, isDepartmentHead: boolean) {

@@ -10,6 +10,7 @@ import { userRepository } from "@/data/user";
 import { sessionRepository } from "@/data/session";
 import { envConfig } from "@/config/env";
 import { USER_STATUS, type ROLE } from "@prisma/client";
+import { mailer } from "@/lib/mailer";
 
 export const authService = {
   generateToken(payload: TokenPayload): Promise<string> {
@@ -62,7 +63,7 @@ export const authService = {
     }
 
     const hashedPassword = await this.hashPassword(password);
-    return userRepository.create(
+    const user = await userRepository.create(
       hashedPassword,
       name,
       isDepartmentHead,
@@ -70,6 +71,16 @@ export const authService = {
       username,
       email
     );
+
+    if (email) {
+      try {
+        await mailer.sendStatusUpdate(email, name, USER_STATUS.PENDING);
+      } catch (err) {
+        console.error("Failed to send registration email:", err);
+      }
+    }
+
+    return user;
   },
 
   async login(username: string, password: string, pushToken?: string) {

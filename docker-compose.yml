@@ -32,7 +32,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:latest
-    container_name: prism_phpmyadmin
+      - "127.0.0.1:8080:80"
     ports:
       - "8080:80"
     environment:
@@ -40,6 +40,14 @@ services:
       
     depends_on:
       - db
+  
+  web:
+    build:
+      context: ../cprism-web
+    container_name: prism_web
+    restart: always
+    ports:
+      - "127.0.0.1:3000:80"
 
 volumes:
   db_data:

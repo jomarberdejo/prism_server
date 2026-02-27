@@ -14,7 +14,7 @@ services:
 
   web:
     build:
-      context: .
+      context: ../web
       dockerfile: Dockerfile.web
     container_name: prism_web
     restart: always

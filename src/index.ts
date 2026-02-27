@@ -18,7 +18,7 @@ routes.forEach((route) => {
   app.route("/api", route);
 });
 
-serve(
+serve( 
   {
     fetch: app.fetch,
     port: envConfig.APP_PORT,

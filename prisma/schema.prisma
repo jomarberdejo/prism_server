@@ -68,7 +68,7 @@ model Session {
 model Sector {
   id          String  @id @default(cuid())
   name        String
-  description String? @db.LongText
+  description String? @db.Text
   PPA         PPA[]
 }
 
@@ -83,17 +83,17 @@ model ImplementingUnit {
 model PPA {
   id                   String           @id @default(cuid())
   task                 String
-  description          String           @db.LongText
+  description          String           @db.Text
   address              String
   venue                String?
   startDate            DateTime
   dueDate              DateTime
-  budgetAllocation     String?          @db.LongText
+  budgetAllocation     String?          @db.Text
   approvedBudget       String?
-  expectedOutput       String           @db.LongText
-  actualOutput         String?          @db.LongText
-  remarks              String?          @db.LongText
-  delayedReason        String?          @db.LongText
+  expectedOutput       String           @db.Text 
+  actualOutput         String?          @db.Text
+  remarks              String?          @db.Text
+  delayedReason        String?          @db.Text
   sectorId             String
   implementingUnitId   String
   sector               Sector           @relation(fields: [sectorId], references: [id])

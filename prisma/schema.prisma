@@ -68,7 +68,7 @@ model Session {
 model Sector {
   id          String  @id @default(cuid())
   name        String
-  description String?
+  description String? @db.LongText
   PPA         PPA[]
 }
 

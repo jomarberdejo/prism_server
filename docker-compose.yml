@@ -10,7 +10,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+    command: ["sh", "-c", "npx prisma db push deploy && node dist/index.js"]
 
   web:
     build:

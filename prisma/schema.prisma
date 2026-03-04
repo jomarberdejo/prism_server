@@ -90,7 +90,7 @@ model PPA {
   dueDate              DateTime
   budgetAllocation     String?
   approvedBudget       String?
-  expectedOutput       String
+  expectedOutput       String           @db.LongText
   actualOutput         String?
   remarks              String?
   delayedReason        String?

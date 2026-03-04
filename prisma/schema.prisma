@@ -83,7 +83,7 @@ model ImplementingUnit {
 model PPA {
   id                   String           @id @default(cuid())
   task                 String
-  description          String           @db.Text
+  description          String           @db.LongText
   address              String
   venue                String?
   startDate            DateTime

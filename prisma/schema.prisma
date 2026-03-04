@@ -4,8 +4,6 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -68,7 +66,7 @@ model Session {
 }
 
 model Sector {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
   PPA         PPA[]
@@ -85,7 +83,7 @@ model ImplementingUnit {
 model PPA {
   id                   String           @id @default(cuid())
   task                 String
-  description          String
+  description          String           @db.LongText
   address              String
   venue                String?
   startDate            DateTime

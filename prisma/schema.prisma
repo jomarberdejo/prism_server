@@ -88,12 +88,12 @@ model PPA {
   venue                String?
   startDate            DateTime
   dueDate              DateTime
-  budgetAllocation     String?
+  budgetAllocation     String?          @db.LongText
   approvedBudget       String?
   expectedOutput       String           @db.LongText
-  actualOutput         String?
-  remarks              String?
-  delayedReason        String?
+  actualOutput         String?          @db.LongText
+  remarks              String?          @db.LongText
+  delayedReason        String?          @db.LongText
   sectorId             String
   implementingUnitId   String
   sector               Sector           @relation(fields: [sectorId], references: [id])

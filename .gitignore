@@ -34,3 +34,5 @@ service-account.json
 prism-key.pem
 
 dist/
+
+prisma/migrations/migration_lock.toml

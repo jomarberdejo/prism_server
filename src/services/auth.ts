@@ -102,8 +102,10 @@ export const authService = {
     }
 
     if (pushToken) {
-      await userRepository.updatePushToken(user.id, pushToken);
+      await userRepository.updatePushToken(username, pushToken);
     }
+
+    
 
     return user;
   },

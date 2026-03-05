@@ -213,41 +213,39 @@ async function checkHourBeforeReminders() {
 
 export async function remindReschedulePPA({
   ppaId,
-  pushToken,
   title,
   body,
 }: {
   ppaId: string;
-  pushToken: string;
   title: string;
   body: string;
 }) {
-  if (!pushToken) return false;
-  const platform = detectPlatform(pushToken);
-  if (!platform) return false;
+  const activeUsers = await userRepository.findActiveUsersWithPushTokens();
+  if (!activeUsers || activeUsers.length === 0) return false;
 
-  const data = { ppaId };
-  let success = false;
-  try {
-    if (platform === "fcm") {
-      success = await sendFCMNotification({
-        fcmToken: pushToken,
-        title,
-        body,
-        data,
-      });
-    } else {
-      success = await sendAPNsNotification({
-        apnsToken: pushToken,
-        title,
-        body,
-        data,
-      });
-    }
-    return success;
-  } catch {
-    return false;
+  let successCount = 0;
+
+  for (const user of activeUsers) {
+    if (!user.pushToken) continue;
+
+    const platform = detectPlatform(user.pushToken);
+    if (!platform) continue;
+
+    const data = { ppaId };
+    try {
+      let success = false;
+      if (platform === "fcm") {
+        success = await sendFCMNotification({ fcmToken: user.pushToken, title, body, data });
+      } else {
+        success = await sendAPNsNotification({ apnsToken: user.pushToken, title, body, data });
+      }
+      if (success) successCount++;
+    } catch {}
+
+    await new Promise((r) => setTimeout(r, 100));
   }
+
+  return successCount > 0;
 }
 
 export function startCronScheduler() {

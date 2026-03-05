@@ -99,7 +99,6 @@ export const ppaService = {
 
       await remindReschedulePPA({
         ppaId,
-        pushToken: updatedPPA?.user?.pushToken as string,
         title,
         body,
       });

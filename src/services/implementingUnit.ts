@@ -15,8 +15,6 @@ export const implementingUnitService = {
     return unit;
   },
 
-
-
   async getImplementingUnitByUserId(userId: string) {
     const unit = await implementingUnitRepository.findByUserId(userId);
     if (!unit) {
@@ -33,7 +31,7 @@ export const implementingUnitService = {
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit) {
       throw new ConflictError(
-        "Implementing unit with this name already exists"
+        "Implementing unit with this name already exists",
       );
     }
 
@@ -53,11 +51,7 @@ export const implementingUnitService = {
     return implementingUnitRepository.create(name, userId);
   },
 
-  async updateImplementingUnit(
-    id: string,
-    name: string,
-    userId: string
-  ) {
+  async updateImplementingUnit(id: string, name: string, userId: string) {
     if (!name || !userId) {
       throw new BadRequestError("Name, userId are required");
     }
@@ -70,7 +64,7 @@ export const implementingUnitService = {
     const existingUnit = await implementingUnitRepository.findByName(name);
     if (existingUnit && existingUnit.id !== id) {
       throw new ConflictError(
-        "Implementing unit with this name already exists"
+        "Implementing unit with this name already exists",
       );
     }
 
@@ -79,13 +73,12 @@ export const implementingUnitService = {
       throw new NotFoundError("User not found");
     }
 
-
     if (unit.userId !== userId) {
       const existingDeptHead =
         await implementingUnitRepository.findByUserId(userId);
       if (existingDeptHead && existingDeptHead.id !== id) {
         throw new ConflictError(
-          "User is already assigned as a department head"
+          "User is already assigned as a department head",
         );
       }
 
@@ -93,7 +86,6 @@ export const implementingUnitService = {
 
       await userRepository.updateDepartmentHeadStatus(userId, true);
     }
-
 
     return implementingUnitRepository.update(id, name, userId);
   },
@@ -106,7 +98,7 @@ export const implementingUnitService = {
 
     if (unit._count.PPA > 0) {
       throw new BadRequestError(
-        "Cannot delete implementing unit with existing PPAs"
+        "Cannot delete implementing unit with existing PPAs",
       );
     }
 

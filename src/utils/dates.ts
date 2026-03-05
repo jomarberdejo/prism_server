@@ -2,7 +2,6 @@ import moment from "moment-timezone";
 
 const DEFAULT_TIMEZONE = "Asia/Manila";
 
-
 class DateTimeUtil {
   private timezone: string;
 

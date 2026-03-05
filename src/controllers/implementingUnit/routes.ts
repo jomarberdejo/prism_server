@@ -8,11 +8,7 @@ router.post(
   authMiddleware,
   implementingUnitHandler.create,
 );
-router.get(
-  "/implementing-units",
-  authMiddleware,
-  implementingUnitHandler.getAll,
-);
+router.get("/implementing-units", implementingUnitHandler.getAll);
 router.delete(
   "/implementing-units/:id",
   authMiddleware,

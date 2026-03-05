@@ -44,7 +44,7 @@ export const authService = {
     username: string,
     isDepartmentHead: boolean,
     role: ROLE,
-    email?: string
+    email?: string,
   ) {
     if (email) {
       const existingUser = await userRepository.findByEmail(email);
@@ -69,7 +69,7 @@ export const authService = {
       isDepartmentHead,
       role,
       username,
-      email
+      email,
     );
 
     if (email) {
@@ -111,7 +111,7 @@ export const authService = {
   async createSession(
     userId: string,
     username: string,
-    role: string
+    role: string,
   ): Promise<string> {
     await sessionRepository.deleteByUserId(userId);
 

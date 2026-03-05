@@ -17,6 +17,11 @@ export const implementingUnitHandler = {
 
   async getById(c: Context) {
     const id = c.req.param("id");
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
+
     const unit = await implementingUnitService.getImplementingUnitById(id);
 
     return c.json(
@@ -28,9 +33,12 @@ export const implementingUnitHandler = {
     );
   },
 
- 
   async getByUserId(c: Context) {
     const userId = c.req.param("userId");
+    if (!userId) {
+      throw new BadRequestError("id is required");
+    }
+
     const unit =
       await implementingUnitService.getImplementingUnitByUserId(userId);
 
@@ -69,7 +77,7 @@ export const implementingUnitHandler = {
     const id = c.req.param("id");
     const { name, userId } = await c.req.json();
 
-    if (!name || !userId) {
+    if (!name || !userId || !id) {
       throw new BadRequestError("Name, userId are required");
     }
 
@@ -91,6 +99,11 @@ export const implementingUnitHandler = {
 
   async delete(c: Context) {
     const id = c.req.param("id");
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
+
     await implementingUnitService.deleteImplementingUnit(id);
 
     return c.json(
@@ -106,8 +119,8 @@ export const implementingUnitHandler = {
     const id = c.req.param("id");
     const { userId } = await c.req.json();
 
-    if (!userId) {
-      throw new BadRequestError("userId is required");
+    if (!userId || !id) {
+      throw new BadRequestError("id is required");
     }
 
     const unit = await implementingUnitService.changeDepartmentHead(id, userId);

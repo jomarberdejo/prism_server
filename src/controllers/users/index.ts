@@ -1,4 +1,5 @@
 import { userService } from "@/services/user";
+import { BadRequestError } from "@/utils/error";
 import type { ROLE } from "@prisma/client";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
@@ -12,7 +13,7 @@ export const userHandler = {
         success: true,
         data: { users },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -24,12 +25,17 @@ export const userHandler = {
         success: true,
         data: users,
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async getById(c: Context) {
     const id = c.req.param("id");
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
+
     const user = await userService.getUserById(id);
 
     return c.json(
@@ -37,7 +43,7 @@ export const userHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -50,13 +56,17 @@ export const userHandler = {
         success: true,
         data: { users },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async updateProfile(c: Context) {
     const id = c.req.param("id");
     const body = await c.req.json();
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
 
     const user = await userService.updateProfile(id, body);
     return c.json(
@@ -65,13 +75,17 @@ export const userHandler = {
         message: "Profile updated successfully",
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async updateRole(c: Context) {
     const id = c.req.param("id");
     const { role } = await c.req.json();
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
 
     const user = await userService.updateUserRole(id, role);
 
@@ -81,12 +95,16 @@ export const userHandler = {
         message: "Role updated successfully",
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
   async updateStatus(c: Context) {
     const id = c.req.param("id");
     const { status } = await c.req.json();
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
 
     const user = await userService.updateUserStatus(id, status);
     return c.json(
@@ -95,7 +113,7 @@ export const userHandler = {
         message: "Status updated successfully",
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -103,9 +121,13 @@ export const userHandler = {
     const id = c.req.param("id");
     const { isDepartmentHead } = await c.req.json();
 
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
+
     const user = await userService.updateDepartmentHeadStatus(
       id,
-      isDepartmentHead
+      isDepartmentHead,
     );
 
     return c.json(
@@ -114,7 +136,7 @@ export const userHandler = {
         message: "Department head status updated successfully",
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -129,12 +151,17 @@ export const userHandler = {
         success: true,
         message: "Password updated successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
   async delete(c: Context) {
     const id = c.req.param("id");
+
+    if (!id) {
+      throw new BadRequestError("id is required");
+    }
+
     await userService.deleteUser(id);
 
     return c.json(
@@ -142,7 +169,7 @@ export const userHandler = {
         success: true,
         message: "User deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

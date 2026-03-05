@@ -46,8 +46,6 @@ export const implementingUnitRepository = {
     });
   },
 
- 
-
   async findByUserId(userId: string) {
     return prisma.implementingUnit.findUnique({
       where: { userId },

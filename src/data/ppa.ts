@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { ForbiddenError, UnauthorizedError } from "@/utils/error";
+import { ForbiddenError } from "@/utils/error";
 import { PPA_STATUS, type Prisma } from "@prisma/client";
 
 const ppaSelect: Prisma.PPASelect = {
@@ -30,6 +30,12 @@ const ppaSelect: Prisma.PPASelect = {
       name: true,
     },
   },
+  // customAttendees: {
+  //   select: {
+  //     id: true,
+  //     name: true,
+  //   },
+  // },
   user: {
     select: {
       pushToken: true,
@@ -137,9 +143,10 @@ export const ppaRepository = {
     approvedBudget?: string;
     implementingUnitId: string;
     userId: string;
-    attendees?: string[];
+    attendees?: string[];      
+    customAttendees?: string[];
   }) {
-    const ppa = await prisma.pPA.create({
+    return prisma.pPA.create({
       data: {
         task: data.task,
         description: data.description,
@@ -155,66 +162,76 @@ export const ppaRepository = {
         userId: data.userId,
         attendees:
           data.attendees && data.attendees.length > 0
-            ? {
-                connect: data.attendees.map((id) => ({ id })),
-              }
+            ? { connect: data.attendees.map((id) => ({ id })) }
             : undefined,
+        // customAttendees:
+        //   data.customAttendees && data.customAttendees.length > 0
+        //     ? { create: data.customAttendees.map((name) => ({ name })) }
+        //     : undefined,
       },
       include: {
         attendees: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+          select: { id: true, name: true, email: true },
         },
+        // customAttendees: {
+        //   select: { id: true, name: true },
+        // },
         sector: true,
         implementingUnit: true,
       },
     });
-
-    return ppa;
   },
 
-  async update(ppaId: string, data: Prisma.PPAUpdateInput, userId?: string) {
+  async update(
+    ppaId: string,
+    data: {
+      attendees?: string[];       
+      customAttendees?: string[]; 
+    } & Omit<Prisma.PPAUpdateInput, "attendees" | "customAttendees">,
+    userId?: string,
+  ) {
     const ppa = await prisma.pPA.findFirst({
-      where: {
-        id: ppaId,
-        userId,
-      },
-      select: {
-        id: true,
-      },
+      where: { id: ppaId, userId },
+      select: { id: true },
     });
 
-  
     if (!ppa) {
       throw new ForbiddenError(
-        "You are not authorized to perform this action."
+        "You are not authorized to perform this action.",
       );
     }
 
+    const { attendees, customAttendees, ...rest } = data;
+
     return prisma.pPA.update({
-      where: {
-        id: ppaId,
+      where: { id: ppaId },
+      data: {
+        ...rest,
+        ...(attendees !== undefined && {
+          attendees: {
+            set: attendees.map((id) => ({ id })),
+          },
+        }),
+        ...(customAttendees !== undefined && {
+          customAttendees: {
+            deleteMany: {},
+            create: customAttendees.map((name) => ({ name })),
+          },
+        }),
       },
-      data,
       select: ppaSelect,
     });
   },
 
   async delete(userId: string, ppaId: string) {
     const ppa = await prisma.pPA.findFirst({
-      where: {
-        id: ppaId,
-        userId,
-      },
+      where: { id: ppaId, userId },
       select: { id: true },
     });
 
     if (!ppa) {
       throw new ForbiddenError(
-        "You are not authorized to perform this action."
+        "You are not authorized to perform this action.",
       );
     }
 
@@ -229,7 +246,7 @@ export const ppaRepository = {
     startDate: Date,
     dueDate: Date,
     excludePPAId?: string,
-    venue?: string
+    venue?: string,
   ) {
     const start = new Date(startDate);
     const end = new Date(dueDate);
@@ -244,9 +261,7 @@ export const ppaRepository = {
         { startDate: { lte: end } },
         { dueDate: { gte: start } },
         { dueDate: { gt: today } },
-        {
-          venue: venue,
-        },
+        { venue },
       ],
     };
 

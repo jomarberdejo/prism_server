@@ -12,7 +12,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -23,7 +23,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -37,7 +37,7 @@ export const ppaHandler = {
         success: true,
         data: { ppa },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -51,7 +51,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -66,7 +66,7 @@ export const ppaHandler = {
         success: true,
         data: { ppas },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -83,7 +83,7 @@ export const ppaHandler = {
       new Date(startDate),
       new Date(dueDate),
       excludePPAId,
-      body.venue
+      body.venue,
     );
 
     return c.json(
@@ -98,7 +98,7 @@ export const ppaHandler = {
               : `${result.conflictingPPAs.length} PPA(s) scheduled in this date range`,
         },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -142,7 +142,7 @@ export const ppaHandler = {
         message: "PPA created successfully",
         data: { ppa: newPPA },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
@@ -152,6 +152,8 @@ export const ppaHandler = {
     const body = await c.req.json();
 
     if (!id) throw new BadRequestError("Missing PPA ID");
+
+    const attendeeIds = body.attendees?.map((attendee: { value: string }) => attendee.value) ?? [];
 
     const updateData: any = {
       task: body.task,
@@ -167,6 +169,7 @@ export const ppaHandler = {
       remarks: body.remarks,
       actualOutput: body.actualOutput,
       delayedReason: body.delayedReason,
+      attendees: attendeeIds,
     };
 
     if (body.startDate) {
@@ -194,7 +197,6 @@ export const ppaHandler = {
         updateData.dueDate = dueDateTime;
       } else {
         updateData.dueDate = new Date(body.dueDate);
-       
       }
     }
 
@@ -204,17 +206,15 @@ export const ppaHandler = {
       }
     });
 
-
     const updated = await ppaService.updatePPA(id, updateData, user.id);
 
-   
     return c.json(
       {
         success: true,
         message: "PPA updated successfully",
         data: updated,
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -231,7 +231,7 @@ export const ppaHandler = {
         success: true,
         message: "PPA deleted successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

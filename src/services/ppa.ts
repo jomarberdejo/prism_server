@@ -46,11 +46,11 @@ export const ppaService = {
       data.startDate,
       data.dueDate,
       undefined,
-      data.venue
+      data.venue,
     );
     if (!availability.available) {
       throw new ForbiddenError(
-        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`,
       );
     }
 
@@ -64,11 +64,11 @@ export const ppaService = {
       data.startDate,
       data.dueDate,
       ppaId,
-      data.venue
+      data.venue,
     );
     if (!availability.available) {
       throw new ForbiddenError(
-        `Venue is not available: ${data.venue} is already occupied for the selected dates.`
+        `Venue is not available: ${data.venue} is already occupied for the selected dates.`,
       );
     }
 
@@ -79,14 +79,13 @@ export const ppaService = {
     const existingDueDate = dateTime.parse(existing.dueDate);
     const newDueDate = data.dueDate ? dateTime.parse(data.dueDate) : null;
 
-    const startDateChanged = 
+    const startDateChanged =
       newStartDate && !existingStartDate.isSame(newStartDate);
-    const dueDateChanged = 
-      newDueDate && !existingDueDate.isSame(newDueDate);
+    const dueDateChanged = newDueDate && !existingDueDate.isSame(newDueDate);
 
     if (startDateChanged || dueDateChanged) {
       let scheduleMessage = "The PPA has been rescheduled.";
-      
+
       if (startDateChanged && dueDateChanged) {
         scheduleMessage = `New schedule: ${dateTime.formatDateTime(data.startDate)} to ${dateTime.formatDateTime(data.dueDate)}`;
       } else if (startDateChanged) {
@@ -97,15 +96,17 @@ export const ppaService = {
 
       const title = "📅 PPA Rescheduled";
       const body = `Reminder: "${updatedPPA.task}" has been rescheduled. ${scheduleMessage}`;
-      
+
       await remindReschedulePPA({
         ppaId,
         pushToken: updatedPPA?.user?.pushToken as string,
         title,
         body,
       });
-      
-      console.log(`✅ Reschedule notification sent for PPA: ${updatedPPA.task}`);
+
+      console.log(
+        `✅ Reschedule notification sent for PPA: ${updatedPPA.task}`,
+      );
     }
 
     return updatedPPA;

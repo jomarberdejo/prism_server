@@ -1,8 +1,4 @@
-import {
-  deleteCookie,
-  getCookie,
-  setCookie,
-} from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
@@ -11,26 +7,35 @@ import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
 
 export const authHandler = {
   async register(c: Context) {
-    const { email, password, name, username, isDepartmentHead, role } = await c.req.json();
+    const { email, password, name, username, isDepartmentHead, role } =
+      await c.req.json();
 
     if (!password || !name || !username) {
       throw new BadRequestError("Missing required fields");
     }
 
-    const user = await authService.register(password, name, username, isDepartmentHead, role, email);
+    const user = await authService.register(
+      password,
+      name,
+      username,
+      isDepartmentHead,
+      role,
+      email,
+    );
     return c.json(
       {
         success: true,
         message: "User registered successfully",
         data: { user },
       },
-      StatusCodes.CREATED
+      StatusCodes.CREATED,
     );
   },
 
   async login(c: Context) {
     const { username, password, pushToken } = await c.req.json();
 
+    console.log("LOGIN");
 
     if (!username || !password) {
       throw new BadRequestError("Username and password required");
@@ -38,13 +43,13 @@ export const authHandler = {
 
     const user = await authService.login(username, password, pushToken);
 
+    console.log("USER LOGIn", user);
+
     const token = await authService.createSession(
       user.id,
       user.username,
-      user.role
+      user.role,
     );
-
-    
 
     setCookie(c, COOKIE_NAMES.accessToken, token, COOKIE_CONFIG);
 
@@ -64,7 +69,7 @@ export const authHandler = {
           token,
         },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -82,7 +87,7 @@ export const authHandler = {
         success: true,
         message: "Logged out successfully",
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 
@@ -93,7 +98,7 @@ export const authHandler = {
         success: true,
         data: { user },
       },
-      StatusCodes.OK
+      StatusCodes.OK,
     );
   },
 };

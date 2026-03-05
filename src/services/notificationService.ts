@@ -262,7 +262,7 @@ export function startCronScheduler() {
   );
 
   cron.schedule(
-    "55 15 * * *",
+    "0 15 * * *",
     async () => {
       await checkDayBeforeReminders();
     },

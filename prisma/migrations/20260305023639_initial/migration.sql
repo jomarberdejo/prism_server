@@ -35,7 +35,7 @@ CREATE TABLE `Session` (
 CREATE TABLE `Sector` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NULL,
+    `description` TEXT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -59,12 +59,12 @@ CREATE TABLE `PPA` (
     `venue` VARCHAR(191) NULL,
     `startDate` DATETIME(3) NOT NULL,
     `dueDate` DATETIME(3) NOT NULL,
-    `budgetAllocation` VARCHAR(191) NULL,
+    `budgetAllocation` TEXT NULL,
     `approvedBudget` VARCHAR(191) NULL,
-    `expectedOutput` VARCHAR(191) NOT NULL,
-    `actualOutput` VARCHAR(191) NULL,
-    `remarks` VARCHAR(191) NULL,
-    `delayedReason` VARCHAR(191) NULL,
+    `expectedOutput` TEXT NOT NULL,
+    `actualOutput` TEXT NULL,
+    `remarks` TEXT NULL,
+    `delayedReason` TEXT NULL,
     `sectorId` VARCHAR(191) NOT NULL,
     `implementingUnitId` VARCHAR(191) NOT NULL,
     `status` ENUM('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'DELAYED', 'ARCHIVED') NOT NULL DEFAULT 'NOT_STARTED',

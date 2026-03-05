@@ -10,16 +10,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "npx prisma db push && node dist/index.js"]
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
 
   web:
     build:
-      context: ../web
+      context: ../prism_client
       dockerfile: Dockerfile.web
     container_name: prism_web
     restart: always
     ports:
-      - "127.0.0.1:3000:80"
+      - "127.0.0.1:5000:80"
 
   db:
     image: mysql:8.0
@@ -43,7 +43,7 @@ services:
     container_name: prism_phpmyadmin
     restart: always
     ports:
-      - "127.0.0.1:8080:80"
+    - "127.0.0.1:8080:80"
     environment:
       PMA_HOST: db
     depends_on:

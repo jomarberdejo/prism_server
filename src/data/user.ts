@@ -155,6 +155,13 @@ export const userRepository = {
     });
   },
 
+  async clearPushToken(userId: string) {
+    return prisma.user.updateMany({
+      where: { id: userId },
+      data: { pushToken: null },
+    });
+  },
+
   async delete(id: string) {
     return prisma.user.delete({
       where: { id },

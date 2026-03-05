@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError } from "@/utils/error";
 import { authService } from "@/services/auth";
 import { COOKIE_CONFIG, COOKIE_NAMES } from "@/constants/cookies";
+import { userRepository } from "@/data/user";
 
 export const authHandler = {
   async register(c: Context) {
@@ -75,18 +76,20 @@ export const authHandler = {
 
   async logout(c: Context) {
     const token = getCookie(c, COOKIE_NAMES.accessToken);
+    const user = c.get("user");
 
     if (token) {
       await authService.destroySession(token);
     }
 
+    if (user?.id) {
+      await userRepository.clearPushToken(user.id);
+    }
+
     deleteCookie(c, COOKIE_NAMES.accessToken, COOKIE_CONFIG);
 
     return c.json(
-      {
-        success: true,
-        message: "Logged out successfully",
-      },
+      { success: true, message: "Logged out successfully" },
       StatusCodes.OK,
     );
   },

@@ -50,6 +50,7 @@ model User {
   status           USER_STATUS       @default(PENDING)
   ownedPPAs        PPA[]
   attendingPPAs    PPA[]             @relation("PPAAttendees")
+  customAttendees  CustomAttendee[]
 
   @@index([email])
 }
@@ -90,7 +91,7 @@ model PPA {
   dueDate              DateTime
   budgetAllocation     String?          @db.Text
   approvedBudget       String?
-  expectedOutput       String           @db.Text 
+  expectedOutput       String           @db.Text
   actualOutput         String?          @db.Text
   remarks              String?          @db.Text
   delayedReason        String?          @db.Text
@@ -105,4 +106,15 @@ model PPA {
   archivedAt           DateTime?
   userId               String?
   user                 User?            @relation(fields: [userId], references: [id])
+  customAttendees      CustomAttendee[]
+}
+
+model CustomAttendee {
+  id        String   @id @default(cuid())
+  name      String
+  ppa       PPA      @relation(fields: [ppaId], references: [id], onDelete: Cascade)
+  ppaId     String
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
 }

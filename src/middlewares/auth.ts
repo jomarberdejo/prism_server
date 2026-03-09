@@ -22,6 +22,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
     ? authHeader.slice(7)
     : null;
 
+
   const token = cookieToken || headerToken;
 
   if (!token) throw new UnauthorizedError("No token provided");

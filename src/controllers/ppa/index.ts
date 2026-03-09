@@ -7,6 +7,7 @@ import { venueService } from "@/services/venue";
 export const ppaHandler = {
   async getAll(c: Context) {
     const ppas = await ppaService.getAllPPAs();
+    // console.log(ppas);
     return c.json(
       {
         success: true,
@@ -116,6 +117,25 @@ export const ppaHandler = {
       "implementingUnitId",
     ];
 
+    console.log("BODY ======", JSON.stringify(body, null, 2));
+
+    const allAttendees: { label: string; value: string }[] = Array.isArray(
+      body.attendees,
+    )
+      ? body.attendees.filter((a: any) => a && typeof a.value === "string")
+      : [];
+
+    const realAttendeeIds = allAttendees
+      .filter((a) => !a.value.startsWith("custom_"))
+      .map((a) => a.value);
+
+    const customAttendeeNames = allAttendees
+      .filter((a) => a.value.startsWith("custom_"))
+      .map((a) => a.label);
+
+      // console.log("ALL ATTENDEES ====== ", allAttendees)
+
+
     for (const field of requiredFields) {
       if (!body[field]) throw new BadRequestError(`Missing field: ${field}`);
     }
@@ -133,7 +153,8 @@ export const ppaHandler = {
       approvedBudget: body.approvedBudget,
       implementingUnitId: body.implementingUnitId,
       userId: user.id,
-      attendees: body.attendees,
+      attendees: realAttendeeIds,
+      customAttendees: customAttendeeNames,
     });
 
     return c.json(
@@ -153,7 +174,14 @@ export const ppaHandler = {
 
     if (!id) throw new BadRequestError("Missing PPA ID");
 
-    const attendeeIds = body.attendees?.map((attendee: { value: string }) => attendee.value) ?? [];
+    const allAttendees: { label: string; value: string }[] =
+      body.attendees ?? [];
+    const realAttendeeIds = allAttendees
+      .filter((a) => !a.value.startsWith("custom_"))
+      .map((a) => a.value);
+    const customAttendeeNames = allAttendees
+      .filter((a) => a.value.startsWith("custom_"))
+      .map((a) => a.label);
 
     const updateData: any = {
       task: body.task,
@@ -169,7 +197,8 @@ export const ppaHandler = {
       remarks: body.remarks,
       actualOutput: body.actualOutput,
       delayedReason: body.delayedReason,
-      attendees: attendeeIds,
+      attendees: realAttendeeIds,
+      customAttendees: customAttendeeNames,
     };
 
     if (body.startDate) {

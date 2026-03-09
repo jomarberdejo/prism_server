@@ -30,12 +30,12 @@ const ppaSelect: Prisma.PPASelect = {
       name: true,
     },
   },
-  // customAttendees: {
-  //   select: {
-  //     id: true,
-  //     name: true,
-  //   },
-  // },
+  customAttendees: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
   user: {
     select: {
       pushToken: true,
@@ -164,18 +164,18 @@ export const ppaRepository = {
           data.attendees && data.attendees.length > 0
             ? { connect: data.attendees.map((id) => ({ id })) }
             : undefined,
-        // customAttendees:
-        //   data.customAttendees && data.customAttendees.length > 0
-        //     ? { create: data.customAttendees.map((name) => ({ name })) }
-        //     : undefined,
+        customAttendees:
+          data.customAttendees && data.customAttendees.length > 0
+            ? { create: data.customAttendees.map((name) => ({ name })) }
+            : undefined,
       },
       include: {
         attendees: {
           select: { id: true, name: true, email: true },
         },
-        // customAttendees: {
-        //   select: { id: true, name: true },
-        // },
+        customAttendees: {
+          select: { id: true, name: true },
+        },
         sector: true,
         implementingUnit: true,
       },

@@ -16,10 +16,16 @@ export const ppaService = {
 
     const mappedPPA = ppas.map((ppa) => ({
       ...ppa,
-      attendees: ppa.attendees.map((attendee) => ({
-        label: attendee.name,
-        value: attendee.id,
-      })),
+      attendees: [
+        ...ppa.attendees.map((attendee) => ({
+          label: attendee.name,
+          value: attendee.id,
+        })),
+        ...(ppa.customAttendees ?? []).map((attendee) => ({
+          label: attendee.name,
+          value: `custom_${attendee.id}`,
+        })),
+      ],
     }));
 
     return mappedPPA;

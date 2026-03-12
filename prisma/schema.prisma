@@ -35,22 +35,23 @@ enum PPA_STATUS {
 }
 
 model User {
-  id               String            @id @default(cuid())
-  email            String?           @unique
-  username         String            @unique
-  password         String
-  name             String
-  role             ROLE              @default(VIEWER)
-  isDepartmentHead Boolean           @default(false)
-  sessions         Session[]
-  departmentHead   ImplementingUnit?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  pushToken        String?
-  status           USER_STATUS       @default(PENDING)
-  ownedPPAs        PPA[]
-  attendingPPAs    PPA[]             @relation("PPAAttendees")
-  customAttendees  CustomAttendee[]
+  id                 String              @id @default(cuid())
+  email              String?             @unique
+  username           String              @unique
+  password           String
+  name               String
+  role               ROLE                @default(VIEWER)
+  isDepartmentHead   Boolean             @default(false)
+  sessions           Session[]
+  departmentHead     ImplementingUnit?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  pushToken          String?
+  status             USER_STATUS         @default(PENDING)
+  ownedPPAs          PPA[]
+  attendingPPAs      PPA[]               @relation("PPAAttendees")
+  customAttendees    CustomAttendee[]
+  passwordResetToken PasswordResetToken?
 
   @@index([email])
 }
@@ -117,4 +118,16 @@ model CustomAttendee {
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
   userId    String?
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  otpHash    String
+  resetToken String?  @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

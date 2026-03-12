@@ -11,6 +11,8 @@ import { sessionRepository } from "@/data/session";
 import { envConfig } from "@/config/env";
 import { USER_STATUS, type ROLE } from "@prisma/client";
 import { mailer } from "@/lib/mailer";
+import { createHash, randomBytes, randomInt } from "crypto";
+import { passwordResetRepository } from "@/data/passwordReset";
 
 export const authService = {
   generateToken(payload: TokenPayload): Promise<string> {
@@ -127,5 +129,56 @@ export const authService = {
 
   async destroySession(token: string) {
     return sessionRepository.deleteByToken(token);
+  },
+
+  async sendPasswordResetOTP(email: string) {
+    const user = await userRepository.findByEmail(email);
+    if (!user) return; // silent fail — no enumeration
+
+    const otp = String(randomInt(100000, 999999));
+    const otpHash = createHash("sha256").update(otp).digest("hex");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await passwordResetRepository.upsert({
+      userId: user.id,
+      otpHash,
+      expiresAt,
+    });
+
+    await mailer.sendPasswordResetOTP(user.email!, user.name, otp);
+  },
+
+  async verifyPasswordResetOTP(email: string, otp: string): Promise<string> {
+    const user = await userRepository.findByEmail(email);
+    if (!user) throw new BadRequestError("Invalid OTP");
+
+    const record = await passwordResetRepository.findByUserId(user.id);
+
+    if (!record || record.used || record.expiresAt < new Date()) {
+      throw new BadRequestError("OTP expired or not found");
+    }
+
+    const otpHash = createHash("sha256").update(otp).digest("hex");
+    if (otpHash !== record.otpHash) {
+      throw new BadRequestError("Invalid OTP");
+    }
+
+    const resetToken = randomBytes(32).toString("hex");
+    await passwordResetRepository.setResetToken(record.id, resetToken);
+
+    return resetToken;
+  },
+
+  async resetPassword(resetToken: string, newPassword: string) {
+    const record = await passwordResetRepository.findByResetToken(resetToken);
+    if (!record) throw new BadRequestError("Invalid or expired reset token");
+
+    if (newPassword.length < 6) {
+      throw new BadRequestError("Password must be at least 6 characters");
+    }
+
+    const hashed = await this.hashPassword(newPassword); // reuse existing method
+    await userRepository.updatePassword(record.userId, hashed);
+    await passwordResetRepository.deleteById(record.id);
   },
 };

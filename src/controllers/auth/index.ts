@@ -104,4 +104,49 @@ export const authHandler = {
       StatusCodes.OK,
     );
   },
+
+  async forgotPassword(c: Context) {
+    const { email } = await c.req.json();
+
+    if (!email) {
+      throw new BadRequestError("Email is required");
+    }
+
+    await authService.sendPasswordResetOTP(email);
+
+    return c.json(
+      { success: true, message: "If that email exists, an OTP has been sent." },
+      StatusCodes.OK,
+    );
+  },
+
+  async verifyOTP(c: Context) {
+    const { email, otp } = await c.req.json();
+
+    if (!email || !otp) {
+      throw new BadRequestError("Email and OTP are required");
+    }
+
+    const resetToken = await authService.verifyPasswordResetOTP(email, otp);
+
+    return c.json(
+      { success: true, data: { resetToken } },
+      StatusCodes.OK,
+    );
+  },
+
+  async resetPassword(c: Context) {
+    const { resetToken, newPassword } = await c.req.json();
+
+    if (!resetToken || !newPassword) {
+      throw new BadRequestError("Reset token and new password are required");
+    }
+
+    await authService.resetPassword(resetToken, newPassword);
+
+    return c.json(
+      { success: true, message: "Password reset successfully" },
+      StatusCodes.OK,
+    );
+  },
 };

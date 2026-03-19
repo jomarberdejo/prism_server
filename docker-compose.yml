@@ -20,6 +20,8 @@ services:
     restart: always
     ports:
       - "127.0.0.1:3000:80"
+    env_file:
+      - ../web/.env 
 
   db:
     image: mysql:8.0

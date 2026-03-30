@@ -115,23 +115,23 @@ export const implementingUnitHandler = {
     );
   },
 
-  async changeDepartmentHead(c: Context) {
-    const id = c.req.param("id");
-    const { userId } = await c.req.json();
+//  async changeDepartmentHead(c: Context) {
+//     const id = c.req.param("id");
+//     const { userId } = await c.req.json();
 
-    if (!userId || !id) {
-      throw new BadRequestError("id is required");
-    }
+//     if (!userId || !id) {
+//       throw new BadRequestError("id is required");
+//     }
 
-    const unit = await implementingUnitService.changeDepartmentHead(id, userId);
+//     const unit = await implementingUnitService.changeDepartmentHead(id, userId);
 
-    return c.json(
-      {
-        success: true,
-        message: "Department head changed successfully",
-        data: { implementingUnit: unit },
-      },
-      StatusCodes.OK,
-    );
-  },
+//     return c.json(
+//       {
+//         success: true,
+//         message: "Department head changed successfully",
+//         data: { implementingUnit: unit },
+//       },
+//       StatusCodes.OK,
+//     );
+//   }, 
 };

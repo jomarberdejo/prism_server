@@ -82,7 +82,7 @@ export const implementingUnitService = {
         );
       }
 
-      await userRepository.updateDepartmentHeadStatus(unit.userId, false);
+      // await userRepository.updateDepartmentHeadStatus(unit.userId, false);
 
       await userRepository.updateDepartmentHeadStatus(userId, true);
     }
@@ -102,32 +102,32 @@ export const implementingUnitService = {
       );
     }
 
-    await userRepository.updateDepartmentHeadStatus(unit.userId, false);
+    // await userRepository.updateDepartmentHeadStatus(unit.userId, false);
 
     return implementingUnitRepository.delete(id);
   },
 
-  async changeDepartmentHead(id: string, newUserId: string) {
-    const unit = await implementingUnitRepository.findById(id);
-    if (!unit) {
-      throw new NotFoundError("Implementing unit not found");
-    }
+  // async changeDepartmentHead(id: string, newUserId: string) {
+  //   const unit = await implementingUnitRepository.findById(id);
+  //   if (!unit) {
+  //     throw new NotFoundError("Implementing unit not found");
+  //   }
 
-    const newUser = await userRepository.findById(newUserId);
-    if (!newUser) {
-      throw new NotFoundError("User not found");
-    }
+  //   const newUser = await userRepository.findById(newUserId);
+  //   if (!newUser) {
+  //     throw new NotFoundError("User not found");
+  //   }
 
-    const existingDeptHead =
-      await implementingUnitRepository.findByUserId(newUserId);
-    if (existingDeptHead && existingDeptHead.id !== id) {
-      throw new ConflictError("User is already assigned as a department head");
-    }
+  //   const existingDeptHead =
+  //     await implementingUnitRepository.findByUserId(newUserId);
+  //   if (existingDeptHead && existingDeptHead.id !== id) {
+  //     throw new ConflictError("User is already assigned as a department head");
+  //   }
 
-    await userRepository.updateDepartmentHeadStatus(unit.userId, false);
+  //   await userRepository.updateDepartmentHeadStatus(unit.userId, false);
 
-    await userRepository.updateDepartmentHeadStatus(newUserId, true);
+  //   await userRepository.updateDepartmentHeadStatus(newUserId, true);
 
-    return implementingUnitRepository.updateDepartmentHead(id, newUserId);
-  },
+  //   return implementingUnitRepository.updateDepartmentHead(id, newUserId);
+  // },
 };
